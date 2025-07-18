@@ -39,7 +39,7 @@ function make_table(table_data,float_param,bottle_param,selected_wmo){
 }
 
 function plot_wrapper(input_data,selected_wmo,selected_float_param,selected_bottle_param){
-  display_plot = make_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo);
+  display_plot = make_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units);
   display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo);
 
   Plotly.newPlot('plot_content',
@@ -56,7 +56,7 @@ function plot_wrapper(input_data,selected_wmo,selected_float_param,selected_bott
 
 }
 
-function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo){
+function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,selected_units){
   cruise_data = plot_data.data.map(row => row["CRUISE"]);
   wmo_data = plot_data.data.map(row => row["WMO"]);
   depth_data = plot_data.data.map(row => row["CTDPRS"]);
@@ -83,7 +83,7 @@ function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo){
       title: {text: "Depth (m)",
       font: {size: 12},standoff: 3}
     },
-    xaxis: {title: {text: plot_title,
+    xaxis: {title: {text: plot_title + " ("+selected_units+")",
       font: {size: 12},standoff: 3}
     },
     //margin controls the margin of the entire plotting area,
@@ -240,7 +240,7 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
   float_filt = filter_values(float_data,complete_rows);
   bottle_filt = filter_values(bottle_data,complete_rows);
   diff_filt = float_filt.map((value,i)=>value-bottle_filt[i]);
-
+  legend_title = plot_title + " ("+selected_units+")";
   wmo_data_unq = avg_by_group(wmo_data_filt,diff_filt).output_groups
   lat_data_avg = avg_by_group(wmo_data_filt,lat_data_filt).output_values;
   lon_data_avg = avg_by_group(wmo_data_filt,lon_data_filt).output_values;
@@ -318,7 +318,7 @@ legend.onAdd = function () {
         width: 100%;
         margin-bottom: 10px;">
         <b>Bottle-Float<br>
-        ${plot_title}</b>
+        ${legend_title}</b>
       </div>
       <div id colorbar style="
           grid-area: 2/1/2/1;

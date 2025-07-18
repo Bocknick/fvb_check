@@ -30,6 +30,7 @@ let selected_float_param = "Float Nitrate";
 let selected_bottle_param = "NITRAT";
 let plot_title = "Nitrate"
 let selected_wmo;
+let selected_units = "\u03BCmol/kg";
 //Run metadata retriever; generate initial wmo_list and 
 //run wrapper with all wmos
 
@@ -59,7 +60,7 @@ function handleFileSelect(event) {
     complete: function(results) {
       input_data = results
       console.log(input_data.data[0])
-      display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title)
+      display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units)
     }
   });
 }
@@ -69,30 +70,37 @@ param_content.addEventListener("click",function(event){
   if(event.target.tagName == "A"){
     plot_title = event.target.textContent
     if(plot_title === "Nitrate"){
+      selected_units = "\u03BCmol/kg"
       selected_float_param = "Float Nitrate"
       selected_bottle_param = "NITRAT"
     }
     if(plot_title === "pH"){
+      selected_units = "Total"
       selected_float_param = "Float pHinsitu"
       selected_bottle_param = "PH_TOT_INSITU"
     }
     if(plot_title === "Oxygen"){
+      selected_units = "\u03BCmol/kg"
       selected_float_param = "Float Oxygen"
       selected_bottle_param = "OXYGEN"
     }
     if(plot_title === "DIC"){
+      selected_units = "\u03BCmol/kg"
       selected_float_param = "Float DIC_LIAR"
       selected_bottle_param = "TCARBN"
     }
     if(plot_title === "pCO2"){
+      selected_units ="\u03BCatm"
       selected_float_param = "Float pCO2_LIAR"
       selected_bottle_param = "PCO2_INSITU"
     }
     if(plot_title === "Alkalinity"){
+      selected_units ="\u03BCmol/kg"
       selected_float_param = "Float TALK_LIAR"
       selected_bottle_param = "ALKALI"
     }
     if(plot_title === "Chlorophyll"){
+      selected_units = "mg/m^3"
       selected_float_param = "Float Chl_a"
       selected_bottle_param = "CHLA_SeaBASS"
     }
