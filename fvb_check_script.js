@@ -42,13 +42,23 @@ fileInput.addEventListener('change', handleFileSelect);
 function handleFileSelect(event) {
   file_path = event.target.files[0];
   Papa.parse(file_path, {
+    //Beforefirstline approach for skipping first two lines
+    //courtesy of Chat GPT.
+    beforeFirstChunk: function(chunk) {
+      // Split by newline, remove first two lines, and rejoin
+      const lines = chunk.split(/\r\n|\r|\n/);
+      const trimmedChunk = lines.slice(2).join("\n");
+      return trimmedChunk;
+    },
     header: true,
     dynamicTyping: true,
+    //transformHeader 
     transformHeader: h => h.replace(/[^\x20-\x7E]/g, ''),
     transformHeader: h => h.replace(/\[.+\]/g,''),
     //transformHeader: h => h.replace(' ','_'),
     complete: function(results) {
       input_data = results
+      console.log(input_data.data[0])
       display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title)
     }
   });
@@ -81,6 +91,10 @@ param_content.addEventListener("click",function(event){
     if(plot_title === "Alkalinity"){
       selected_float_param = "Float TALK_LIAR"
       selected_bottle_param = "ALKALI"
+    }
+    if(plot_title === "Chlorophyll"){
+      selected_float_param = "Float Chl_a"
+      selected_bottle_param = "CHLA_SeaBASS"
     }
 
     //display_plot = make_plot(input_data,selected_float_param,selected_bottle_param,plot_title);

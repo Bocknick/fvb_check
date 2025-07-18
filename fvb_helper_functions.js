@@ -1,28 +1,3 @@
-async function get_map_data(selected_param){
-  param_list = ["WMO_ID","PARAM","LAT","LON","DIFF","CRUISE_ID"]
-  possible_params = ["Nitrate","pH","Oxygen","DIC","pCO2","Alkalinity","Chlorophyll","Location"]
-  possible_units = ["\u03BCmol/kg","Total","\u03BCmol/kg","\u03BCmol/kg","\u03BCatm","\u03BCmol/kg","mg/m^3","Degs."]
-  param_test = possible_params.map(row => row === selected_param)
-  selected_units = possible_units.filter((_,i)=>param_test[i]);
-  legend_title = selected_param + " ("+selected_units+")";
-
-  let metrics_data
-  let metrics_error
-
-  ({data: metrics_data, error: metrics_error} = await supa_client
-      .from('map_data')
-      .select(`wmo_matchup(WMO),cruise_matchup(CRUISE),${param_list.join(',')}`)
-      .ilike('PARAM',selected_param));
-      
-      if (metrics_error) {
-      console.error('Supabase error:', metrics_error);
-      return;
-      }
-
-  return {metrics_data,legend_title}
-}
-
-
 function make_table(table_data,float_param,bottle_param,selected_wmo){
   cruise_data = table_data.data.map(row => row["CRUISE"]);
   wmo_data = table_data.data.map(row => row["WMO"]);
@@ -46,7 +21,7 @@ function make_table(table_data,float_param,bottle_param,selected_wmo){
     type: 'table',
     header: {
       values: [[`<b>Cruise</b>`],[`<b>WMO</b>`],[`<b>Depth</b>`],[`<b>Bottle</b>`], ["<b>Float</b>"],
-              ["<b>Bottle - Float</b>"]],
+              ["<b>Bottle - Float</b>"],[`<b>Z Score</b>`]],
       align: ["left", "center"],
       line: {width: 0.5, color: 'black'},
       fill: {color: '#4D9DE0'},
@@ -167,10 +142,26 @@ clean_subtract = function(x,y){
   if(x == null || y == null){
     return(null)
   } 
-  return (x-y).toFixed(2);
+  return Number((x-y).toFixed(2));
+}
+
+clean_z = function(x,mean,sd){
+  if(x == null){
+    return(null)
+  } 
+  return ((x-mean)/sd).toFixed(2)
 }
 
 function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo){
+  //Calculate differences for all data to get z-scores
+  diff_values = float_data.map((value,i)=>clean_subtract(value,bottle_data[i]))
+  keep = diff_values.map((value,i) => Number.isFinite(value));
+
+  diff_no_nulls = diff_values.filter((value,i)=>keep[i]);
+  // console.log(diff_no_nulls)
+  diff_mean = ss.mean(diff_no_nulls);
+  diff_sd = ss.standardDeviation(diff_no_nulls)
+
   wmo_rows = find_matching_wmo(wmo_data,selected_wmo);
   cruise_filt = filter_values(cruise_data,wmo_rows);
   wmo_filt = filter_values(wmo_data,wmo_rows);
@@ -179,7 +170,7 @@ function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,
   bottle_filt = filter_values(bottle_data,wmo_rows);
 
   diff_values = float_filt.map((value,i)=>clean_subtract(value,bottle_filt[i]))
-  //z_scores = diff_values.map(row => (row-ss.mean(diff_values))/ss.standardDeviation(diff_values))
+  z_scores = diff_values.map(value => clean_z(value,diff_mean,diff_sd))
 
   //Use absolute value here to make sure that negative
   //values more than three standard deviations from mean
@@ -205,6 +196,7 @@ function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,
   bottle_sorted = sorted_indices.map((value,i) => bottle_filt[value])
   float_sorted = sorted_indices.map((value,i) => float_filt[value])
   diff_sorted = sorted_indices.map((value,i) => diff_values[value])
+  z_sorted = sorted_indices.map((value,i) => z_scores[value])
   // diff_table_data = sorted_indices.map((value,i) => diff_table_data[value].toFixed(2))
   // cruise_table_data = sorted_indices.map((value,i) => cruise_table_data[value])
   // wmo_table_data = sorted_indices.map((value,i) => wmo_table_data[value])
@@ -212,7 +204,7 @@ function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,
   // float_table_data = sorted_indices.map((value,i) => float_table_data[value].toFixed(2))
   // z_table_data = sorted_indices.map((value,i) => z_table_data[value].toFixed(2))
   // table_data = [cruise_table_data,wmo_table_data,float_table_data,bottle_table_data,diff_table_data,z_table_data]
-  table_data = [cruise_sorted,wmo_sorted,depth_sorted,bottle_sorted,float_sorted,diff_sorted]
+  table_data = [cruise_sorted,wmo_sorted,depth_sorted,bottle_sorted,float_sorted,diff_sorted,z_sorted]
   return table_data;
 }
 
