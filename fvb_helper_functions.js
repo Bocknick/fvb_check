@@ -1,27 +1,24 @@
-function make_table(table_data,float_param,bottle_param,selected_wmo){
+function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column){
   cruise_data = table_data.data.map(row => row["CRUISE"]);
   wmo_data = table_data.data.map(row => row["WMO"]);
   depth_data = table_data.data.map(row => row["CTDPRS"])
   float_data = table_data.data.map(row => row[float_param]);
   bottle_data = table_data.data.map(row => row[bottle_param]);
 
-  table_data = prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo);
+  table_data = prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo,sort_column);
 
   var layout = {
     margin: {t: 30, b: 30, l: 30, r: 10},    
-    width: 450,
-    height: 300,
-    // title: {text: selected_wmo,
-    //   font: {size: 12, family:"Menlo,Consolas,monaco,monospace"}
-    // }
+    width: 600,
+    height: 290,
   }
   
 
   var data = [{
     type: 'table',
     header: {
-      values: [[`<b>Cruise</b>`],[`<b>WMO</b>`],[`<b>Depth</b>`],[`<b>Bottle</b>`], ["<b>Float</b>"],
-              ["<b>Bottle - Float</b>"],[`<b>Z Score</b>`]],
+      values: [[`<b>Cruise</b>`],[`<b>WMO</b>`],[`<b>Depth</b>`],[`<b>Float</b>`], ["<b>Bottle</b>"],
+              ["<b>Float - Bottle</b>"],[`<b>Z Score</b>`]],
       align: ["left", "center"],
       line: {width: 0.5, color: 'black'},
       fill: {color: '#4D9DE0'},
@@ -68,38 +65,26 @@ function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,se
   depth_filt = filter_values(depth_data,wmo_rows);
   float_filt = filter_values(float_data,wmo_rows);
   bottle_filt = filter_values(bottle_data,wmo_rows)
-  // complete_rows = find_complete_rows(float_var,bottle_var);
-  // wmo_filt = filter_values(wmo_data,complete_rows);
-  // float_filt = filter_values(float_var,complete_rows);
-  // bottle_filt = filter_values(bottle_var,complete_rows);
-  // diff_data = float_filt.map((value,i)=>value-bottle_filt[i])
 
   var traces = [];
   var layout = {
-    // grid: { rows: 1, columns: 3, pattern: 'independent',
-    //   xgap: 0.2},
     autoexpand: true,
     yaxis: {autorange: "reversed",
       title: {text: "Depth (m)",
-      font: {size: 12},standoff: 3}
+      font: {size: 14},standoff: 3}
     },
     xaxis: {title: {text: plot_title + " ("+selected_units+")",
-      font: {size: 12},standoff: 3}
+      font: {size: 14},standoff: 3}
     },
-    //margin controls the margin of the entire plotting area,
-    //not individual subplots. Note that plotly's default
-    //margins are relatively large, so removing the margin
-    //line results in more comptessed plots. Also, The plot title
-    //appears within the margin, so too small of a margin will push the
-    //title into the axis
-    margin: {t: 30, b: 30, l: 50, r: 10},    
-    width: 400,
-    height: 300,
+
+    margin: {t: 20, b: 40, l: 50, r: 10},    
+    width: 290,
+    height: 290,
     hovermode: 'closest',
     showlegend: false,
-    // title: {text: plot_title,
-    //     font: {size: 12}, standoff: 7},
     font: {family:  "Menlo,Consolas,monaco,monospace", size: 14},
+    title: {text: `<b>${selected_wmo}</b>`,
+            font: {family:  "Menlo,Consolas,monaco,monospace",size: 16},x:0.5, y: 0.97},
     plot_bgcolor: 'white',
   };
   var bottle_trace = {
@@ -117,8 +102,6 @@ function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,se
     var float_trace = {
       x: float_filt,
       y: depth_filt,
-      // text: wmo_plot_data,
-      //hovertemplate: '<b>WMO: </b>%{text} <br><b>Cruise:</b><extra></extra>',
       type: 'scatter',
       mode: 'markers',
       name: 'Float Data',
@@ -133,8 +116,57 @@ function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,se
     return {traces, layout}
 }
 
+function make_summary_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,selected_units){
+
+  cruise_data = plot_data.data.map(row => row["CRUISE"]);
+  wmo_data = plot_data.data.map(row => row["WMO"]);
+  depth_data = plot_data.data.map(row => row["CTDPRS"]);
+  float_data = plot_data.data.map(row => row[float_param]);
+  bottle_data = plot_data.data.map(row => row[bottle_param]);
+
+  complete_rows = find_complete_rows(float_data,bottle_data);
+  diff_data = float_data.map((value,i)=>value-bottle_data[i])
+  diff_data = diff_data.filter((value,i)=>complete_rows[i])
+
+  var layout = {
+    autoexpand: true,
+    xaxis: {title: {text: plot_title + " (Float - Bottle)",
+      font: {size: 14},standoff: 4}
+    },
+    //margin controls the margin of the entire plotting area,
+    //not individual subplots. Note that plotly's default
+    //margins are relatively large, so removing the margin
+    //line results in more comptessed plots. Also, The plot title
+    //appears within the margin, so too small of a margin will push the
+    //title into the axis
+    margin: {t: 30, b: 40, l: 50, r: 10},    
+    width: 290,
+    height: 290,
+    hovermode: 'closest',
+    showlegend: false,
+    font: {family:  "Menlo,Consolas,monaco,monospace", size: 14},
+    plot_bgcolor: 'white',
+  };
+
+  var hist_trace = [{
+      x: diff_data,
+      type: 'histogram',
+      name: "Bottle Data",
+      opacity: 0.7,
+      xaxis: "x1",
+      yaxis: "y1"
+    }]
+
+    return {hist_trace, layout}
+}
+
 function find_matching_wmo(wmo_data,selected_wmo){
-  wmo_row_matches = wmo_data.map((value,i) => value == selected_wmo)
+  //If no WMO is specified, return a vector of true values (prevents filtering in subsequent steps)
+  if(selected_wmo === ""){
+    wmo_row_matches = wmo_data.map((value,i) => value = true)
+  }else{
+    wmo_row_matches = wmo_data.map((value,i) => value === selected_wmo)
+  }
   return(wmo_row_matches);
 }
 
@@ -152,13 +184,12 @@ clean_z = function(x,mean,sd){
   return ((x-mean)/sd).toFixed(2)
 }
 
-function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo){
+function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo,sort_column){
   //Calculate differences for all data to get z-scores
   diff_values = float_data.map((value,i)=>clean_subtract(value,bottle_data[i]))
   keep = diff_values.map((value,i) => Number.isFinite(value));
 
   diff_no_nulls = diff_values.filter((value,i)=>keep[i]);
-  // console.log(diff_no_nulls)
   diff_mean = ss.mean(diff_no_nulls);
   diff_sd = ss.standardDeviation(diff_no_nulls)
 
@@ -172,24 +203,17 @@ function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,
   diff_values = float_filt.map((value,i)=>clean_subtract(value,bottle_filt[i]))
   z_scores = diff_values.map(value => clean_z(value,diff_mean,diff_sd))
 
-  //Use absolute value here to make sure that negative
-  //values more than three standard deviations from mean
-  //are included as well
-  //outlier_row = z_scores.map(value => Math.abs(value) > 0);
-  
-  // diff_table_data = filter_values(diff_values,outlier_row);
-  // diff_abs = diff_table_data.map(value => Math.abs(value));
-  // bottle_table_data = filter_values(bottle_filt,outlier_row);
-  // float_table_data = filter_values(float_filt,outlier_row);
-  // wmo_table_data = filter_values(wmo_filt, outlier_row);
-  // z_table_data = filter_values(z_scores,outlier_row);
-  // cruise_table_data =filter_values(cruise_filt,outlier_row);
-
   sorted_indices = depth_filt
     .map((value,index) => ({value,index}))
     .sort((a,b) => a.value - b.value)
     .map(item => item.index)
 
+  if(sort_column==="z-scores"){
+    sorted_indices = z_scores
+      .map((value,index) => ({value,index}))
+      .sort((a,b) => a.value - b.value)
+      .map(item => item.index)
+  }
   cruise_sorted = sorted_indices.map((value,i) => cruise_filt[value])
   wmo_sorted = sorted_indices.map((value,i) => wmo_filt[value])
   depth_sorted = sorted_indices.map((value,i) => depth_filt[value])
@@ -197,14 +221,8 @@ function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,
   float_sorted = sorted_indices.map((value,i) => float_filt[value])
   diff_sorted = sorted_indices.map((value,i) => diff_values[value])
   z_sorted = sorted_indices.map((value,i) => z_scores[value])
-  // diff_table_data = sorted_indices.map((value,i) => diff_table_data[value].toFixed(2))
-  // cruise_table_data = sorted_indices.map((value,i) => cruise_table_data[value])
-  // wmo_table_data = sorted_indices.map((value,i) => wmo_table_data[value])
-  // bottle_table_data = sorted_indices.map((value,i) => bottle_table_data[value].toFixed(2))
-  // float_table_data = sorted_indices.map((value,i) => float_table_data[value].toFixed(2))
-  // z_table_data = sorted_indices.map((value,i) => z_table_data[value].toFixed(2))
-  // table_data = [cruise_table_data,wmo_table_data,float_table_data,bottle_table_data,diff_table_data,z_table_data]
-  table_data = [cruise_sorted,wmo_sorted,depth_sorted,bottle_sorted,float_sorted,diff_sorted,z_sorted]
+
+  table_data = [cruise_sorted,wmo_sorted,depth_sorted,float_sorted,bottle_sorted,diff_sorted,z_sorted]
   return table_data;
 }
 
@@ -233,6 +251,9 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
   lon_data = plot_data.data.map(row => row["LONGITUDE"])
   float_data = plot_data.data.map(row => row[selected_float_param]);
   bottle_data = plot_data.data.map(row => row[selected_bottle_param]);
+  if(selected_bottle_param===""){
+    bottle_data = bottle_data.map((value,i)=>value=0)
+  }
   complete_rows = find_complete_rows(float_data,bottle_data);
   wmo_data_filt = filter_values(wmo_data,complete_rows)
   lat_data_filt = filter_values(lat_data,complete_rows)
@@ -257,12 +278,14 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
 
   var map = L.map('map_content', {
     center: [0,0],
-    zoom: 1.5,
+    zoom: 2,
+    zoomSnap: 0.25,
+    //dragging: false,
     maxBoundsViscosity: 1.0,
     zoomControl: false,
     attributionControl: false})
   
-  map.fitBounds([[50,-180],[-70,180]])
+  //map.fitBounds([[50,-180],[-70,180]])
   leafletMap = map; // Save the map so we can remove it later
 
   const ocean_res = await fetch('https://raw.githubusercontent.com/martynafford/natural-earth-geojson/refs/heads/master/110m/physical/ne_110m_ocean.json');
@@ -317,7 +340,7 @@ legend.onAdd = function () {
         text-align: center;
         width: 100%;
         margin-bottom: 10px;">
-        <b>Bottle-Float<br>
+        <b>Float-Bottle<br>
         ${legend_title}</b>
       </div>
       <div id colorbar style="
@@ -387,26 +410,7 @@ function find_complete_rows(x,y){
   const keep = x.map((val,i) => Number.isFinite(val) && Number.isFinite(y[i]));
   return(keep)
 }
-//   let aux_filter = null;
-//   if(aux != null){
-//     //.filter() iterates through an array and only keeps elements that pass a 
-//     //conditional test. In the following, the test is just whether the corresponding
-//     //value of keep is true/false.
-//     aux_filter = aux.filter((_,i)=>keep[i]);
-//   }
 
-//   //x.filter only retains values from x where keep == TRUE
-//   const x_filter = x.filter((_,i)=>keep[i]);
-//   //y.filter only retains values from y where keep == TRUE
-//   const y_filter = y.filter((_,i)=>keep[i]);
-//   //x_filter.map calculates the difference between x_filter and y_filter
-//   //for each element in x_filter.
-//   const diff = x_filter.map((val,i) => val-y_filter[i]);
-//   return {diff,keep};
-// }
-
-//Model II regression code adapted from MATLAB provided at...
-//https://www.mbari.org/technology/matlab-scripts/linear-regressions/
 const model_II_regress = (X,Y) => {
     n = X.length
     Sx = X.reduce((a,b) => a + b);

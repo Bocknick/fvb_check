@@ -1,8 +1,9 @@
 const container = document.getElementById('app-container');
 container.innerHTML =
     `<div class = "app-container">
-        <div class = "controls">
-          <input type="file" id="fileInput">
+        <div class = "ui">
+          <label for="fileInput" class="custom-file-label">Upload File</label>
+          <input type="file" id="fileInput" class="hidden-file-input">
           <div class = "dropdown" id = "params">
               <button>Parameters</button>
               <div class = "content" id = "param_content">
@@ -13,7 +14,12 @@ container.innerHTML =
                 <a>pCO2</a>
                 <a>Alkalinity</a>
                 <a>Chlorophyll</a>
+                <a>Space</a>
+                <a>Time</a>
               </div>
+          </div>
+          <div id = "reset">
+            <button>Reset Selections</button>
           </div>
         </div>
         <div id="map_content"></div>
@@ -36,9 +42,34 @@ let selected_units = "\u03BCmol/kg";
 
 const fileInput = document.getElementById('fileInput');
 const param_content = document.getElementById('param_content');
+const reset_clicked = document.getElementById('reset');
 const map_content = document.getElementById('map_content');
 
 fileInput.addEventListener('change', handleFileSelect);
+reset_clicked.addEventListener('click', function(event){
+  refresh();
+  let selected_float_param = "Float Nitrate";
+  let selected_bottle_param = "NITRAT";
+  let plot_title = "Nitrate"
+  let selected_units = "\u03BCmol/kg";
+
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units)
+  display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores");
+
+  Plotly.newPlot('plot_content',
+    display_plot.hist_trace,
+    display_plot.layout,
+    { displayModeBar: false }
+  );
+
+  Plotly.newPlot('table_content',
+    display_table.data,
+    display_table.layout,
+    { displayModeBar: false }
+  );
+});
+
 
 function handleFileSelect(event) {
   file_path = event.target.files[0];
@@ -59,12 +90,24 @@ function handleFileSelect(event) {
     //transformHeader: h => h.replace(' ','_'),
     complete: function(results) {
       input_data = results
-      console.log(input_data.data[0])
       display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units)
+      display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units);
+      display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores");
+
+      Plotly.newPlot('plot_content',
+        display_plot.hist_trace,
+        display_plot.layout,
+        { displayModeBar: false }
+      );
+
+      Plotly.newPlot('table_content',
+        display_table.data,
+        display_table.layout,
+        { displayModeBar: false }
+      );
     }
   });
 }
-
 param_content.addEventListener("click",function(event){
   refresh();
   if(event.target.tagName == "A"){
@@ -105,19 +148,33 @@ param_content.addEventListener("click",function(event){
       selected_bottle_param = "CHLA_SeaBASS"
     }
 
-    //display_plot = make_plot(input_data,selected_float_param,selected_bottle_param,plot_title);
-    //display_table = make_table(input_data,selected_float_param,selected_bottle_param,plot_title);
-    display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title)
+    if(plot_title === "Space"){
+      selected_units = "km"
+      selected_float_param = "dDist (km)"
+      selected_bottle_param = ""
+    }
 
-    // Plotly.newPlot('plot_content',
-    //     [display_plot.trace],
-    //     display_plot.layout,
-    //     { displayModeBar: false }
-    // );
-    // Plotly.newPlot('table_content',
-    //     display_table.data,
-    //     display_table.layout
-    // );
+    if(plot_title === "Time"){
+      selected_units = "hours"
+      selected_float_param = "Bottle - Float Date (hours)"
+      selected_bottle_param = ""
+    }
+    display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units);
+    display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores");
+
+    Plotly.newPlot('plot_content',
+      display_plot.hist_trace,
+      display_plot.layout,
+      { displayModeBar: false }
+    );
+
+    Plotly.newPlot('table_content',
+      display_table.data,
+      display_table.layout,
+      { displayModeBar: false }
+    );
+
+    display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title)
   }
 })
 
