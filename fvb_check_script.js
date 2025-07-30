@@ -90,6 +90,7 @@ function handleFileSelect(event) {
     //transformHeader: h => h.replace(' ','_'),
     complete: function(results) {
       input_data = results
+
       display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units)
       display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units);
       display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores");

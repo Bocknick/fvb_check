@@ -5,7 +5,20 @@ function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column
   float_data = table_data.data.map(row => row[float_param]);
   bottle_data = table_data.data.map(row => row[bottle_param]);
 
-  table_data = prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo,sort_column);
+  //bottle_param == "" when selected parameter is distance. In this case, change the table headers and
+  //return table_data that averages by cruise an wmo before calculating Z-scores
+  if(bottle_param===""){
+    diff_data = float_data
+    //bottle_data = bottle_data.map((value,i)=>value=0)
+    table_headers = [[`<b>Cruise</b>`],[`<b>WMO</b>`],
+                    ["<b>Distance</b>"],[`<b>Z Score</b>`]];
+    table_data = prep_distance_table(cruise_data,wmo_data,diff_data,selected_wmo,sort_column="z-scores");
+  } else{
+    table_headers = [[`<b>Cruise</b>`],[`<b>WMO</b>`],[`<b>Depth</b>`],[`<b>Float</b>`], ["<b>Bottle</b>"],
+            ["<b>Float - Bottle</b>"],[`<b>Z Score</b>`]];
+    table_data = prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo,sort_column);
+  }
+
 
   var layout = {
     margin: {t: 30, b: 30, l: 30, r: 10},    
@@ -17,8 +30,7 @@ function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column
   var data = [{
     type: 'table',
     header: {
-      values: [[`<b>Cruise</b>`],[`<b>WMO</b>`],[`<b>Depth</b>`],[`<b>Float</b>`], ["<b>Bottle</b>"],
-              ["<b>Float - Bottle</b>"],[`<b>Z Score</b>`]],
+      values: table_headers,
       align: ["left", "center"],
       line: {width: 0.5, color: 'black'},
       fill: {color: '#4D9DE0'},
@@ -117,12 +129,14 @@ function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,se
 }
 
 function make_summary_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,selected_units){
-
   cruise_data = plot_data.data.map(row => row["CRUISE"]);
   wmo_data = plot_data.data.map(row => row["WMO"]);
   depth_data = plot_data.data.map(row => row["CTDPRS"]);
   float_data = plot_data.data.map(row => row[float_param]);
   bottle_data = plot_data.data.map(row => row[bottle_param]);
+  if(selected_bottle_param===""){
+    bottle_data = bottle_data.map((value,i)=>value=0)
+  }
 
   complete_rows = find_complete_rows(float_data,bottle_data);
   diff_data = float_data.map((value,i)=>value-bottle_data[i])
@@ -156,7 +170,6 @@ function make_summary_plot(plot_data,float_param,bottle_param,plot_title,selecte
       xaxis: "x1",
       yaxis: "y1"
     }]
-
     return {hist_trace, layout}
 }
 
@@ -184,14 +197,59 @@ clean_z = function(x,mean,sd){
   return ((x-mean)/sd).toFixed(2)
 }
 
-function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo,sort_column){
+function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,sort_column){
   //Calculate differences for all data to get z-scores
+
+  cruise_avg = avg_by_group(wmo_data,cruise_data).output_values
+  dist_avg = avg_by_group(wmo_data,dist_data).output_values
+  wmo_avg = avg_by_group(wmo_data,cruise_data).output_groups
+
+  keep = dist_avg.map((value,i) => Number.isFinite(value));
+  dist_no_nulls = dist_avg.filter((value,i)=>keep[i]);
+  dist_mean = ss.mean(dist_no_nulls);
+  dist_sd = ss.standardDeviation(dist_no_nulls)
+
+  wmo_rows = find_matching_wmo(wmo_avg,selected_wmo);
+  cruise_filt = filter_values(cruise_avg,wmo_rows);
+  wmo_filt = filter_values(wmo_avg,wmo_rows);
+  dist_filt = filter_values(dist_avg,wmo_rows)
+  dist_filt = dist_filt.map(value => value.toFixed(2))
+  z_scores = dist_avg.map(value => clean_z(value,dist_mean,dist_sd))
+
+  sorted_indices = dist_filt
+    .map((value,index) => ({value,index}))
+    .sort((a,b) => b.value - a.value)
+    .map(item => item.index)
+
+  if(sort_column==="z-scores"){
+    sorted_indices = z_scores
+      .map((value,index) => ({value,index}))
+      .sort((a,b) => Math.abs(b.value) - Math.abs(a.value))
+      .map(item => item.index)
+  }
+
+  cruise_sorted = sorted_indices.map((value,i) => cruise_filt[value])
+  wmo_sorted = sorted_indices.map((value,i) => wmo_filt[value])
+  dist_sorted = sorted_indices.map((value,i) => dist_filt[value])
+  z_sorted = sorted_indices.map((value,i) => z_scores[value])
+
+  table_data = [cruise_sorted,wmo_sorted,dist_sorted,z_sorted]
+
+  return table_data;
+}
+
+function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo,sort_column){
+  //Calculate differences for all data to get z-scores
+  
   diff_values = float_data.map((value,i)=>clean_subtract(value,bottle_data[i]))
   keep = diff_values.map((value,i) => Number.isFinite(value));
 
+  //diff_no_nulls is only used to calculate mean and standard deviation for z_scores
   diff_no_nulls = diff_values.filter((value,i)=>keep[i]);
   diff_mean = ss.mean(diff_no_nulls);
   diff_sd = ss.standardDeviation(diff_no_nulls)
+
+  diff_values = float_data.map((value,i)=>clean_subtract(value,bottle_data[i]))
 
   wmo_rows = find_matching_wmo(wmo_data,selected_wmo);
   cruise_filt = filter_values(cruise_data,wmo_rows);
@@ -199,8 +257,8 @@ function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,
   depth_filt = filter_values(depth_data,wmo_rows);
   float_filt = filter_values(float_data,wmo_rows);
   bottle_filt = filter_values(bottle_data,wmo_rows);
+  diff_filt = filter_values(diff_values,wmo_rows)
 
-  diff_values = float_filt.map((value,i)=>clean_subtract(value,bottle_filt[i]))
   z_scores = diff_values.map(value => clean_z(value,diff_mean,diff_sd))
 
   sorted_indices = depth_filt
@@ -214,6 +272,7 @@ function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,
       .sort((a,b) => a.value - b.value)
       .map(item => item.index)
   }
+
   cruise_sorted = sorted_indices.map((value,i) => cruise_filt[value])
   wmo_sorted = sorted_indices.map((value,i) => wmo_filt[value])
   depth_sorted = sorted_indices.map((value,i) => depth_filt[value])
@@ -223,6 +282,7 @@ function prep_table_data(cruise_data,wmo_data,depth_data,float_data,bottle_data,
   z_sorted = sorted_indices.map((value,i) => z_scores[value])
 
   table_data = [cruise_sorted,wmo_sorted,depth_sorted,float_sorted,bottle_sorted,diff_sorted,z_sorted]
+
   return table_data;
 }
 
@@ -230,11 +290,20 @@ function avg_by_group(groups,values){
   unique_groups = [...new Set(groups)]
   let output_groups = []
   let output_values = []
+
   for(let i = 0; i < unique_groups.length; i++){
     current_group = unique_groups[i]
     keepers = groups.map((value,i) => value == current_group)
     values_filt = values.filter((value,i)=>keepers[i])
-    output_values.push(ss.mean(values_filt))
+
+ 
+    if(typeof values[1] === "number"){
+      output_values.push(ss.mean(values_filt))
+    }
+    if(typeof values[1] === "string"){
+      output_values.push(values_filt[0])
+    }
+
     output_groups.push(current_group)
   }
   return{output_groups,output_values}
