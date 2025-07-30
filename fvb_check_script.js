@@ -14,10 +14,11 @@ container.innerHTML =
                 <a>pCO2</a>
                 <a>Alkalinity</a>
                 <a>Chlorophyll</a>
-                <a>Space</a>
-                <a>Time</a>
+                <a>Distance (space)</a>
+                <a>Distance (time)</a>
               </div>
           </div>
+          <div id = "slider_container"></div>
           <div id = "reset">
             <button>Reset Selections</button>
           </div>
@@ -36,6 +37,7 @@ let selected_float_param = "Float Nitrate";
 let selected_bottle_param = "NITRAT";
 let plot_title = "Nitrate"
 let selected_wmo;
+let max_dist;
 let selected_units = "\u03BCmol/kg";
 //Run metadata retriever; generate initial wmo_list and 
 //run wrapper with all wmos
@@ -44,8 +46,10 @@ const fileInput = document.getElementById('fileInput');
 const param_content = document.getElementById('param_content');
 const reset_clicked = document.getElementById('reset');
 const map_content = document.getElementById('map_content');
+const slider_click = document.getElementById('slider_container')
 
 fileInput.addEventListener('change', handleFileSelect);
+
 reset_clicked.addEventListener('click', function(event){
   refresh();
   let selected_float_param = "Float Nitrate";
@@ -53,9 +57,24 @@ reset_clicked.addEventListener('click', function(event){
   let plot_title = "Nitrate"
   let selected_units = "\u03BCmol/kg";
 
-  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units)
-  display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units);
-  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores");
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist)
+  display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores",max_dist);
+
+  slider_container.innerHTML = `<div style="display: grid; border: 1px solid black; margin-bottom: 5px;">
+      <div id = label style="font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;padding: 0px; font-size: 14px;">Filter distance (km)</div>
+      <input type="range" min="0" max=${max_dist} value=${max_dist} class="slider" id="dist_slider"></input>
+      <div id = labels style="display: flex; flex-direction: row;
+      font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;
+      font-size: 10px;
+      justify-content: space-between">
+      <div>0</div>
+      <div>${dist_20.toFixed(0)}</div>
+      <div>${dist_40.toFixed(0)}</div>
+      <div>${dist_60.toFixed(0)}</div>
+      <div>${dist_80.toFixed(0)}</div>
+      <div>${max_dist.toFixed(0)}</div>
+      </div>`
 
   Plotly.newPlot('plot_content',
     display_plot.hist_trace,
@@ -91,9 +110,59 @@ function handleFileSelect(event) {
     complete: function(results) {
       input_data = results
 
-      display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units)
-      display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units);
-      display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores");
+      dist_data = input_data.data.map(row => row['dDist (km)'])
+      dist_keep = dist_data.map((value,i)=>isFinite(value))
+      dist_filt = dist_data.filter((value,i)=>dist_keep[i])
+      min_dist = (Math.min(...dist_filt));
+      med_dist = (ss.median(dist_filt));
+      max_dist = (Math.max(...dist_filt));
+      dist_filt_sort = dist_filt.sort();
+      dist_min = 0
+      dist_20 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.2)-1]
+      dist_40 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.4)-1]
+      dist_60 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.6)-1]
+      dist_80 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.8)-1]
+      console.log(dist_filt_sort);
+
+      display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist)
+      display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
+      display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores",max_dist);
+      
+      slider_container.innerHTML = `<div style="display: grid; border: 1px solid black; margin-bottom: 5px;">
+      <div id = label style="font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;padding: 0px; font-size: 14px;">Filter distance (km)</div>
+      <input type="range" min="0" max=${max_dist} value=${max_dist} class="slider" id="dist_slider"></input>
+      <div id = labels style="display: flex; flex-direction: row;
+      font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;
+      font-size: 10px;
+      justify-content: space-between">
+      <div>0</div>
+      <div>${dist_20.toFixed(0)}</div>
+      <div>${dist_40.toFixed(0)}</div>
+      <div>${dist_60.toFixed(0)}</div>
+      <div>${dist_80.toFixed(0)}</div>
+      <div>${max_dist.toFixed(0)}</div>
+      </div>`
+
+      let rangeslider = document.getElementById("dist_slider");
+      rangeslider.oninput = function () {
+        refresh()
+
+        display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,this.value)
+        display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,this.value);
+        display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores",this.value);
+      
+        Plotly.newPlot('plot_content',
+            display_plot.hist_trace,
+            display_plot.layout,
+          { displayModeBar: false }
+          );
+
+        Plotly.newPlot('table_content',
+          display_table.data,
+          display_table.layout,
+          { displayModeBar: false }
+        );
+      }
 
       Plotly.newPlot('plot_content',
         display_plot.hist_trace,
@@ -109,6 +178,10 @@ function handleFileSelect(event) {
     }
   });
 }
+
+
+
+
 param_content.addEventListener("click",function(event){
   refresh();
   if(event.target.tagName == "A"){
@@ -149,19 +222,20 @@ param_content.addEventListener("click",function(event){
       selected_bottle_param = "CHLA_SeaBASS"
     }
 
-    if(plot_title === "Space"){
+    if(plot_title === "Distance (space)"){
       selected_units = "km"
       selected_float_param = "dDist (km)"
       selected_bottle_param = ""
     }
 
-    if(plot_title === "Time"){
+    if(plot_title === "Distance (time)"){
       selected_units = "hours"
       selected_float_param = "Bottle - Float Date (hours)"
       selected_bottle_param = ""
     }
-    display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_units);
-    display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores");
+
+    display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
+    display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores",max_dist);
 
     Plotly.newPlot('plot_content',
       display_plot.hist_trace,
@@ -175,7 +249,7 @@ param_content.addEventListener("click",function(event){
       { displayModeBar: false }
     );
 
-    display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title)
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist)
   }
 })
 

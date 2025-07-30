@@ -1,7 +1,8 @@
-function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column){
+function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column,max_dist){
   cruise_data = table_data.data.map(row => row["CRUISE"]);
   wmo_data = table_data.data.map(row => row["WMO"]);
   depth_data = table_data.data.map(row => row["CTDPRS"])
+  dist_data = table_data.data.map(row => row['dDist (km)']);
   float_data = table_data.data.map(row => row[float_param]);
   bottle_data = table_data.data.map(row => row[bottle_param]);
 
@@ -12,20 +13,18 @@ function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column
     //bottle_data = bottle_data.map((value,i)=>value=0)
     table_headers = [[`<b>Cruise</b>`],[`<b>WMO</b>`],
                     ["<b>Distance</b>"],[`<b>Z Score</b>`]];
-    table_data = prep_distance_table(cruise_data,wmo_data,diff_data,selected_wmo,sort_column="z-scores");
+    table_data = prep_distance_table(cruise_data,wmo_data,diff_data,selected_wmo,sort_column="z-scores",max_dist);
   } else{
     table_headers = [[`<b>Cruise</b>`],[`<b>WMO</b>`],[`<b>Depth</b>`],[`<b>Float</b>`], ["<b>Bottle</b>"],
             ["<b>Float - Bottle</b>"],[`<b>Z Score</b>`]];
-    table_data = prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo,sort_column);
+    table_data = prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,dist_data,selected_wmo,sort_column,max_dist);
   }
-
 
   var layout = {
     margin: {t: 30, b: 30, l: 30, r: 10},    
     width: 600,
     height: 290,
   }
-  
 
   var data = [{
     type: 'table',
@@ -49,7 +48,7 @@ function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column
 
 function plot_wrapper(input_data,selected_wmo,selected_float_param,selected_bottle_param){
   display_plot = make_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units);
-  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,sort_column,max_dist = 5000);
 
   Plotly.newPlot('plot_content',
     display_plot.traces,
@@ -128,17 +127,17 @@ function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,se
     return {traces, layout}
 }
 
-function make_summary_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,selected_units){
+function make_summary_plot(plot_data,float_param,bottle_param,plot_title,max_dist){
   cruise_data = plot_data.data.map(row => row["CRUISE"]);
   wmo_data = plot_data.data.map(row => row["WMO"]);
   depth_data = plot_data.data.map(row => row["CTDPRS"]);
   float_data = plot_data.data.map(row => row[float_param]);
+  dist_data = plot_data.data.map(row => row["dDist (km)"])
   bottle_data = plot_data.data.map(row => row[bottle_param]);
   if(selected_bottle_param===""){
     bottle_data = bottle_data.map((value,i)=>value=0)
   }
-
-  complete_rows = find_complete_rows(float_data,bottle_data);
+  complete_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,"");
   diff_data = float_data.map((value,i)=>value-bottle_data[i])
   diff_data = diff_data.filter((value,i)=>complete_rows[i])
 
@@ -197,14 +196,16 @@ clean_z = function(x,mean,sd){
   return ((x-mean)/sd).toFixed(2)
 }
 
-function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,sort_column){
+function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,sort_column,max_dist){
   //Calculate differences for all data to get z-scores
-
+  console.log(max_dist);
   cruise_avg = avg_by_group(wmo_data,cruise_data).output_values
   dist_avg = avg_by_group(wmo_data,dist_data).output_values
   wmo_avg = avg_by_group(wmo_data,cruise_data).output_groups
 
-  keep = dist_avg.map((value,i) => Number.isFinite(value));
+  keep = find_keeper_rows(dist_avg,dist_avg,dist_data,max_dist,wmo_data,selected_wmo);
+
+  //keep = dist_avg.map((value,i) => Number.isFinite(value));
   dist_no_nulls = dist_avg.filter((value,i)=>keep[i]);
   dist_mean = ss.mean(dist_no_nulls);
   dist_sd = ss.standardDeviation(dist_no_nulls)
@@ -238,9 +239,9 @@ function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,sort_co
   return table_data;
 }
 
-function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,selected_wmo,sort_column){
+function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,dist_data,selected_wmo,sort_column,max_dist){
   //Calculate differences for all data to get z-scores
-  
+  console.log(selected_wmo)
   diff_values = float_data.map((value,i)=>clean_subtract(value,bottle_data[i]))
   keep = diff_values.map((value,i) => Number.isFinite(value));
 
@@ -249,17 +250,23 @@ function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle
   diff_mean = ss.mean(diff_no_nulls);
   diff_sd = ss.standardDeviation(diff_no_nulls)
 
-  diff_values = float_data.map((value,i)=>clean_subtract(value,bottle_data[i]))
+  keep_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,selected_wmo);
 
-  wmo_rows = find_matching_wmo(wmo_data,selected_wmo);
-  cruise_filt = filter_values(cruise_data,wmo_rows);
-  wmo_filt = filter_values(wmo_data,wmo_rows);
-  depth_filt = filter_values(depth_data,wmo_rows);
-  float_filt = filter_values(float_data,wmo_rows);
-  bottle_filt = filter_values(bottle_data,wmo_rows);
-  diff_filt = filter_values(diff_values,wmo_rows)
+  cruise_filt = filter_values(cruise_data,keep_rows);
+  wmo_filt = filter_values(wmo_data,keep_rows);
+  depth_filt = filter_values(depth_data,keep_rows);
+  float_filt = filter_values(float_data,keep_rows);
+  bottle_filt = filter_values(bottle_data,keep_rows);
+  diff_filt = filter_values(diff_values,keep_rows)
 
-  z_scores = diff_values.map(value => clean_z(value,diff_mean,diff_sd))
+  console.log("Selected WMO:",selected_wmo)
+  console.log("Float data:",float_filt.length)
+  console.log("Bottle data:",bottle_filt.length)
+  console.log("Depth data:",depth_filt.length)
+  console.log("Dist data:",diff_filt.length)
+  console.log("Max dist:",max_dist)
+
+  z_scores = diff_filt.map(value => clean_z(value,diff_mean,diff_sd))
 
   sorted_indices = depth_filt
     .map((value,index) => ({value,index}))
@@ -272,7 +279,7 @@ function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle
       .sort((a,b) => a.value - b.value)
       .map(item => item.index)
   }
-
+  console.log(Math.max(...sorted_indices))
   cruise_sorted = sorted_indices.map((value,i) => cruise_filt[value])
   wmo_sorted = sorted_indices.map((value,i) => wmo_filt[value])
   depth_sorted = sorted_indices.map((value,i) => depth_filt[value])
@@ -281,6 +288,7 @@ function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle
   diff_sorted = sorted_indices.map((value,i) => diff_values[value])
   z_sorted = sorted_indices.map((value,i) => z_scores[value])
 
+  console.log(... new Set(cruise_sorted))
   table_data = [cruise_sorted,wmo_sorted,depth_sorted,float_sorted,bottle_sorted,diff_sorted,z_sorted]
 
   return table_data;
@@ -314,16 +322,20 @@ function filter_values(values, booleans){
   return output
 }
 
-async function make_map(plot_data,selected_float_param,selected_bottle_param,plot_title){
+async function make_map(plot_data,selected_float_param,selected_bottle_param,plot_title,max_dist){
+
   wmo_data = plot_data.data.map(row => row["WMO"]);
   lat_data = plot_data.data.map(row => row["LATITUDE"])
   lon_data = plot_data.data.map(row => row["LONGITUDE"])
+  dist_data = plot_data.data.map(row => row["dDist (km)"])
+
   float_data = plot_data.data.map(row => row[selected_float_param]);
   bottle_data = plot_data.data.map(row => row[selected_bottle_param]);
   if(selected_bottle_param===""){
     bottle_data = bottle_data.map((value,i)=>value=0)
   }
-  complete_rows = find_complete_rows(float_data,bottle_data);
+  
+  complete_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,"");
   wmo_data_filt = filter_values(wmo_data,complete_rows)
   lat_data_filt = filter_values(lat_data,complete_rows)
   lon_data_filt = filter_values(lon_data,complete_rows)
@@ -339,12 +351,6 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
 
   const {color_scale, min_value, mid_value, max_value } = make_palette(diff_data_avg);
 
-  // var container = L.DomUtil.get('plot_content');
-
-  // if(container != null){
-  //   container._leaflet_id = null;
-  // }
-
   var map = L.map('map_content', {
     center: [0,0],
     zoom: 2,
@@ -354,7 +360,6 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
     zoomControl: false,
     attributionControl: false})
   
-  //map.fitBounds([[50,-180],[-70,180]])
   leafletMap = map; // Save the map so we can remove it later
 
   const ocean_res = await fetch('https://raw.githubusercontent.com/martynafford/natural-earth-geojson/refs/heads/master/110m/physical/ne_110m_ocean.json');
@@ -455,6 +460,17 @@ legend.onAdd = function () {
   return map
 }
 
+function find_keeper_rows(x,y,dist_data,filter_dist,wmo_data,selected_wmo){
+  if(selected_wmo === ""){
+    keep_rows = wmo_data.map((value,i)=>value=true)
+    keep_rows = keep_rows.map((val,i) => Number.isFinite(x[i]) && Number.isFinite(y[i]) && dist_data[i] <= filter_dist);
+  } else{
+    keep_rows = keep.map((val,i) => Number.isFinite(x[i]) && Number.isFinite(y[i]) && dist_data[i] <= filter_dist && wmo_data[i] == selected_wmo);
+  }
+  return(keep_rows);
+}
+
+
 function make_palette(input_data){
   //Note use of spread operator (...) to unlist array
   const min_value = Math.min(...input_data)
@@ -470,14 +486,6 @@ function make_palette(input_data){
   //palette = chroma.scale('Spectral').colors(data_bins.length)
   //color_values = data_values_binned.map(row => palette[data_bins.indexOf(row)])
   return { color_scale, min_value, mid_value, max_value};
-}
-
-function find_complete_rows(x,y){
-
-  //Create keep as array of booleans indicating whether numeric values are available
-  //for both x and y at the given index
-  const keep = x.map((val,i) => Number.isFinite(val) && Number.isFinite(y[i]));
-  return(keep)
 }
 
 const model_II_regress = (X,Y) => {
