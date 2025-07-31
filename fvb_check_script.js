@@ -76,6 +76,7 @@ reset_clicked.addEventListener('click', function(event){
       <div>${max_dist.toFixed(0)}</div>
       </div>`
 
+  
   Plotly.newPlot('plot_content',
     display_plot.hist_trace,
     display_plot.layout,
@@ -116,20 +117,20 @@ function handleFileSelect(event) {
       min_dist = (Math.min(...dist_filt));
       med_dist = (ss.median(dist_filt));
       max_dist = (Math.max(...dist_filt));
-      dist_filt_sort = dist_filt.sort();
-      dist_min = 0
+      dist_filt_sort = dist_filt.sort((a, b) => a - b);
+
       dist_20 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.2)-1]
       dist_40 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.4)-1]
       dist_60 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.6)-1]
       dist_80 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.8)-1]
-      console.log(dist_filt_sort);
+      
 
       display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist)
       display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
       display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores",max_dist);
       
       slider_container.innerHTML = `<div style="display: grid; border: 1px solid black; margin-bottom: 5px;">
-      <div id = label style="font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;padding: 0px; font-size: 14px;">Filter distance (km)</div>
+      <div id = label style="font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;padding: 2px; font-size: 14px;">Filter distance (km)</div>
       <input type="range" min="0" max=${max_dist} value=${max_dist} class="slider" id="dist_slider"></input>
       <div id = labels style="display: flex; flex-direction: row;
       font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;

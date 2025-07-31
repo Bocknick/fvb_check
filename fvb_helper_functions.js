@@ -198,7 +198,6 @@ clean_z = function(x,mean,sd){
 
 function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,sort_column,max_dist){
   //Calculate differences for all data to get z-scores
-  console.log(max_dist);
   cruise_avg = avg_by_group(wmo_data,cruise_data).output_values
   dist_avg = avg_by_group(wmo_data,dist_data).output_values
   wmo_avg = avg_by_group(wmo_data,cruise_data).output_groups
@@ -241,7 +240,6 @@ function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,sort_co
 
 function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,dist_data,selected_wmo,sort_column,max_dist){
   //Calculate differences for all data to get z-scores
-  console.log(selected_wmo)
   diff_values = float_data.map((value,i)=>clean_subtract(value,bottle_data[i]))
   keep = diff_values.map((value,i) => Number.isFinite(value));
 
@@ -259,12 +257,12 @@ function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle
   bottle_filt = filter_values(bottle_data,keep_rows);
   diff_filt = filter_values(diff_values,keep_rows)
 
-  console.log("Selected WMO:",selected_wmo)
-  console.log("Float data:",float_filt.length)
-  console.log("Bottle data:",bottle_filt.length)
-  console.log("Depth data:",depth_filt.length)
-  console.log("Dist data:",diff_filt.length)
-  console.log("Max dist:",max_dist)
+  // console.log("Selected WMO:",selected_wmo)
+  // console.log("Float data:",float_filt.length)
+  // console.log("Bottle data:",bottle_filt.length)
+  // console.log("Depth data:",depth_filt.length)
+  // console.log("Dist data:",diff_filt.length)
+  // console.log("Max dist:",max_dist)
 
   z_scores = diff_filt.map(value => clean_z(value,diff_mean,diff_sd))
 
