@@ -1,4 +1,4 @@
-function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column,max_dist){
+function make_table(table_data,float_param,bottle_param,selected_wmo,max_dist){
   cruise_data = table_data.data.map(row => row["CRUISE"]);
   wmo_data = table_data.data.map(row => row["WMO"]);
   depth_data = table_data.data.map(row => row["CTDPRS"])
@@ -13,11 +13,12 @@ function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column
     //bottle_data = bottle_data.map((value,i)=>value=0)
     table_headers = [[`<b>Cruise</b>`],[`<b>WMO</b>`],
                     ["<b>Distance</b>"],[`<b>Z Score</b>`]];
-    table_data = prep_distance_table(cruise_data,wmo_data,diff_data,selected_wmo,sort_column="z-scores",max_dist);
+    table_data = prep_distance_table(cruise_data,wmo_data,diff_data,selected_wmo,max_dist);
   } else{
     table_headers = [[`<b>Cruise</b>`],[`<b>WMO</b>`],[`<b>Depth</b>`],[`<b>Float</b>`], ["<b>Bottle</b>"],
             ["<b>Float - Bottle</b>"],[`<b>Z Score</b>`]];
-    table_data = prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,dist_data,selected_wmo,sort_column,max_dist);
+            
+    table_data = prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,dist_data,selected_wmo,max_dist);
   }
 
   var layout = {
@@ -48,7 +49,7 @@ function make_table(table_data,float_param,bottle_param,selected_wmo,sort_column
 
 function plot_wrapper(input_data,selected_wmo,selected_float_param,selected_bottle_param){
   display_plot = make_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units);
-  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,sort_column,max_dist = 5000);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,max_dist = 5000);
 
   Plotly.newPlot('plot_content',
     display_plot.traces,
@@ -134,9 +135,9 @@ function make_summary_plot(plot_data,float_param,bottle_param,plot_title,max_dis
   float_data = plot_data.data.map(row => row[float_param]);
   dist_data = plot_data.data.map(row => row["dDist (km)"])
   bottle_data = plot_data.data.map(row => row[bottle_param]);
-  if(selected_bottle_param===""){
-    bottle_data = bottle_data.map((value,i)=>value=0)
-  }
+  // if(selected_bottle_param===""){
+  //   bottle_data = bottle_data.map((value,i)=>value=0)
+  // }
   complete_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,"");
   diff_data = float_data.map((value,i)=>value-bottle_data[i])
   diff_data = diff_data.filter((value,i)=>complete_rows[i])
@@ -196,12 +197,12 @@ clean_z = function(x,mean,sd){
   return ((x-mean)/sd).toFixed(2)
 }
 
-function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,sort_column,max_dist){
+function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,max_dist){
   //Calculate differences for all data to get z-scores
   cruise_avg = avg_by_group(wmo_data,cruise_data).output_values
   dist_avg = avg_by_group(wmo_data,dist_data).output_values
   wmo_avg = avg_by_group(wmo_data,cruise_data).output_groups
-
+  
   keep = find_keeper_rows(dist_avg,dist_avg,dist_data,max_dist,wmo_data,selected_wmo);
 
   //keep = dist_avg.map((value,i) => Number.isFinite(value));
@@ -209,53 +210,80 @@ function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,sort_co
   dist_mean = ss.mean(dist_no_nulls);
   dist_sd = ss.standardDeviation(dist_no_nulls)
 
-  wmo_rows = find_matching_wmo(wmo_avg,selected_wmo);
-  cruise_filt = filter_values(cruise_avg,wmo_rows);
-  wmo_filt = filter_values(wmo_avg,wmo_rows);
-  dist_filt = filter_values(dist_avg,wmo_rows)
+  cruise_filt = filter_values(cruise_avg,keep);
+  wmo_filt = filter_values(wmo_avg,keep);
+  dist_filt = filter_values(dist_avg,keep)
   dist_filt = dist_filt.map(value => value.toFixed(2))
   z_scores = dist_avg.map(value => clean_z(value,dist_mean,dist_sd))
+  z_scores_filt = filter_values(z_scores,keep);
 
   sorted_indices = dist_filt
     .map((value,index) => ({value,index}))
     .sort((a,b) => b.value - a.value)
     .map(item => item.index)
 
-  if(sort_column==="z-scores"){
-    sorted_indices = z_scores
-      .map((value,index) => ({value,index}))
-      .sort((a,b) => Math.abs(b.value) - Math.abs(a.value))
-      .map(item => item.index)
-  }
-
   cruise_sorted = sorted_indices.map((value,i) => cruise_filt[value])
   wmo_sorted = sorted_indices.map((value,i) => wmo_filt[value])
   dist_sorted = sorted_indices.map((value,i) => dist_filt[value])
-  z_sorted = sorted_indices.map((value,i) => z_scores[value])
+  z_sorted = sorted_indices.map((value,i) => z_scores_filt[value])
 
   table_data = [cruise_sorted,wmo_sorted,dist_sorted,z_sorted]
 
   return table_data;
 }
 
-function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,dist_data,selected_wmo,sort_column,max_dist){
+function find_wmo_rows(wmo_data,selected_wmo){
+  if(selected_wmo === ""){
+    return(wmo_data.map((value,i)=>value = true))
+  }
+  let output_boolean = wmo_data.map((value,i) => value === selected_wmo);
+  return(output_boolean);
+}
+
+function find_dist_rows(dist_data,max_depth,boolean_vector){
+  output_boolean = boolean_vector.map((_,i) => boolean_vector[i] && dist_data[i] <= max_depth);
+  return output_boolean;
+}
+
+function boolean_sum(boolean_vector){
+  let output = boolean_vector.filter(value=>value)
+  return output.length
+}
+
+function null_sum(vector){
+  let output = vector.filter((value)=>value === null);
+  return output.length;
+}
+
+function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle_data,dist_data,selected_wmo,max_dist){
   //Calculate differences for all data to get z-scores
-  diff_values = float_data.map((value,i)=>clean_subtract(value,bottle_data[i]))
-  keep = diff_values.map((value,i) => Number.isFinite(value));
+  let diff_values = float_data.map((value,i)=>clean_subtract(value,bottle_data[i]))
+  //Find rows with complete values
+  let diff_keep = diff_values.map((value,i) => Number.isFinite(value));
+  //Filter null values to caclulate statistics
+  let diff_no_nulls = diff_values.filter((value,i)=>diff_keep[i]);
+  let diff_mean = ss.mean(diff_no_nulls);
+  let diff_sd = ss.standardDeviation(diff_no_nulls)
+  let z_scores = diff_values.map(value => clean_z(value,diff_mean,diff_sd))
 
-  //diff_no_nulls is only used to calculate mean and standard deviation for z_scores
-  diff_no_nulls = diff_values.filter((value,i)=>keep[i]);
-  diff_mean = ss.mean(diff_no_nulls);
-  diff_sd = ss.standardDeviation(diff_no_nulls)
+  let wmo_rows = find_wmo_rows(wmo_data,selected_wmo);
+  //console.log(wmo_rows.length,"Rows in Boolean", boolean_sum(wmo_rows),"retained")
+  //console.log("Retained rows after WMO filter ", boolean_sum(wmo_rows))
+  final_rows = find_dist_rows(dist_data,max_dist,wmo_rows);
+  //console.log("Retained rows after distance filter ", boolean_sum(final_rows))
+  //console.log(keep_rows)
+  // console.log(boolean_sum(keep_rows));
+  // NOTE! Missing values should not be filtered out!!
+  let cruise_filt = filter_values(cruise_data,final_rows);
+  let wmo_filt = filter_values(wmo_data,final_rows);
+  let depth_filt = filter_values(depth_data,final_rows);
+  let float_filt = filter_values(float_data,final_rows);
+  let bottle_filt = filter_values(bottle_data,final_rows);
+  let diff_filt = filter_values(diff_values,final_rows);
+  let z_filt = filter_values(z_scores,final_rows);
 
-  keep_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,selected_wmo);
-
-  cruise_filt = filter_values(cruise_data,keep_rows);
-  wmo_filt = filter_values(wmo_data,keep_rows);
-  depth_filt = filter_values(depth_data,keep_rows);
-  float_filt = filter_values(float_data,keep_rows);
-  bottle_filt = filter_values(bottle_data,keep_rows);
-  diff_filt = filter_values(diff_values,keep_rows)
+  // console.log("Nulls in final bottle vector", null_sum(bottle_filt));
+  // console.log("Retained rows: ", boolean_sum(final_rows));
 
   // console.log("Selected WMO:",selected_wmo)
   // console.log("Float data:",float_filt.length)
@@ -264,29 +292,19 @@ function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle
   // console.log("Dist data:",diff_filt.length)
   // console.log("Max dist:",max_dist)
 
-  z_scores = diff_filt.map(value => clean_z(value,diff_mean,diff_sd))
-
-  sorted_indices = depth_filt
+  sorted_indices = z_filt
     .map((value,index) => ({value,index}))
-    .sort((a,b) => a.value - b.value)
+    .sort((a,b) => Math.abs(b.value) - Math.abs(a.value))
     .map(item => item.index)
 
-  if(sort_column==="z-scores"){
-    sorted_indices = z_scores
-      .map((value,index) => ({value,index}))
-      .sort((a,b) => a.value - b.value)
-      .map(item => item.index)
-  }
-  console.log(Math.max(...sorted_indices))
   cruise_sorted = sorted_indices.map((value,i) => cruise_filt[value])
   wmo_sorted = sorted_indices.map((value,i) => wmo_filt[value])
   depth_sorted = sorted_indices.map((value,i) => depth_filt[value])
   bottle_sorted = sorted_indices.map((value,i) => bottle_filt[value])
   float_sorted = sorted_indices.map((value,i) => float_filt[value])
-  diff_sorted = sorted_indices.map((value,i) => diff_values[value])
-  z_sorted = sorted_indices.map((value,i) => z_scores[value])
+  diff_sorted = sorted_indices.map((value,i) => diff_filt[value])
+  z_sorted = sorted_indices.map((value,i) => z_filt[value])
 
-  console.log(... new Set(cruise_sorted))
   table_data = [cruise_sorted,wmo_sorted,depth_sorted,float_sorted,bottle_sorted,diff_sorted,z_sorted]
 
   return table_data;
@@ -320,7 +338,12 @@ function filter_values(values, booleans){
   return output
 }
 
-async function make_map(plot_data,selected_float_param,selected_bottle_param,plot_title,max_dist){
+function find_complete_rows(x,y,booleans){
+  output = booleans.map((value,i)=>x[i] !== null & y[i] !== null & value)
+  return output
+}
+
+async function make_map(plot_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo){
 
   wmo_data = plot_data.data.map(row => row["WMO"]);
   lat_data = plot_data.data.map(row => row["LATITUDE"])
@@ -329,14 +352,18 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
 
   float_data = plot_data.data.map(row => row[selected_float_param]);
   bottle_data = plot_data.data.map(row => row[selected_bottle_param]);
-  if(selected_bottle_param===""){
-    bottle_data = bottle_data.map((value,i)=>value=0)
-  }
   
-  complete_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,"");
-  wmo_data_filt = filter_values(wmo_data,complete_rows)
-  lat_data_filt = filter_values(lat_data,complete_rows)
-  lon_data_filt = filter_values(lon_data,complete_rows)
+  //complete_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,selected_wmo);
+  let wmo_rows = find_wmo_rows(wmo_data,selected_wmo);
+  let dist_rows = find_dist_rows(dist_data,max_dist,wmo_rows);
+  let complete_rows = find_complete_rows(float_data,bottle_data,dist_rows);
+
+  console.log(max_dist)
+  console.log(selected_wmo)
+  wmo_data_filt = filter_values(wmo_data,complete_rows);
+  lat_data_filt = filter_values(lat_data,complete_rows);
+  lon_data_filt = filter_values(lon_data,complete_rows);
+  dist_data_filt = filter_values(dist_data,complete_rows)
   float_filt = filter_values(float_data,complete_rows);
   bottle_filt = filter_values(bottle_data,complete_rows);
   diff_filt = float_filt.map((value,i)=>value-bottle_filt[i]);
@@ -346,6 +373,7 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
   lon_data_avg = avg_by_group(wmo_data_filt,lon_data_filt).output_values;
   lat_data_avg = avg_by_group(wmo_data_filt,lat_data_filt).output_values;
   diff_data_avg = avg_by_group(wmo_data_filt,diff_filt).output_values;
+  dist_data_avg = avg_by_group(wmo_data_filt,dist_data_filt).output_values;
 
   const {color_scale, min_value, mid_value, max_value } = make_palette(diff_data_avg);
 
@@ -362,10 +390,18 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
 
   const ocean_res = await fetch('https://raw.githubusercontent.com/martynafford/natural-earth-geojson/refs/heads/master/110m/physical/ne_110m_ocean.json');
   const ocean = await ocean_res.json();
-  L.geoJSON(ocean,{color:'#5BBCD6',weight: 0.5,color: 'black',fillColor: '#ADD8E6',fillOpacity: 1}).addTo(map);
+  L.geoJSON(ocean,{color:'#5BBCD6',
+    weight: 0.5,
+    color: 'black',
+    fillColor: '#ADD8E6',
+    fillOpacity: 1,
+    pane: "tilePane"}).addTo(map);
 
   for(let i = 0; i < lon_data_avg.length; i++){
-    let tooltip_string = `<b>WMO: </b> ${wmo_data_unq[i]}`
+    let tooltip_string = `<b>WMO: </b> ${wmo_data_unq[i]}<br>
+                          <b>LAT: </b> ${lat_data_avg[i].toFixed(2)}<br>
+                          <b>LON: </b> ${lon_data_avg[i].toFixed(2)}<br>
+                          <b>Float/Bottle Distance</b> ${dist_data_avg[i].toFixed(2)}`
     L.circleMarker([lat_data_avg[i],lon_data_avg[i]],
       {fillColor: color_scale(diff_data_avg[i]).hex(),color: "black",weight: 0.5,fillOpacity: 1,radius: 2.5})
     .bindTooltip(tooltip_string, 
@@ -376,6 +412,21 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
       plot_wrapper(input_data,selected_wmo,selected_float_param,selected_bottle_param)
     })
   }
+map.createPane("graticulePane");
+map.getPane("graticulePane").style.zIndex = 650;  // Higher than polygons/circles
+
+L.latlngGraticule({
+    showLabel: true,
+    color: "black",
+    opacity: 0.6,
+    zoomInterval: [
+        {start: 2, end: 3, interval: 30},
+        {start: 4, end: 4, interval: 10},
+        {start: 5, end: 7, interval: 5},
+        {start: 8, end: 10, interval: 1}
+    ],
+    pane: "graticulePane"
+}).addTo(map);
 
 //Create legend, positioned on the bottomright
 const legend = L.control({ position: 'bottomright' });

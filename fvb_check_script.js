@@ -14,11 +14,19 @@ container.innerHTML =
                 <a>pCO2</a>
                 <a>Alkalinity</a>
                 <a>Chlorophyll</a>
+                <a>Temperature</a>
+                <a>Salinity</a>
                 <a>Distance (space)</a>
                 <a>Distance (time)</a>
               </div>
           </div>
           <div id = "slider_container"></div>
+          <form id = 'wmo_form' autocomplete="off" style = "width:200px; display:flex; gap: 4px;">
+            <div class="autocomplete" style="flex: 2;">
+                <input id="wmo_input" type="text" placeholder="WMO" style = "width: 100%; font-size: 14px;">
+            </div>
+            <input type="submit" value = "Submit" style = "flex: 1; margin-bottom: 5px; font-size: 14px; padding: 12px;">
+          </form>
           <div id = "reset">
             <button>Reset Selections</button>
           </div>
@@ -38,6 +46,7 @@ let selected_bottle_param = "NITRAT";
 let plot_title = "Nitrate"
 let selected_wmo;
 let max_dist;
+let wmo_list;
 let selected_units = "\u03BCmol/kg";
 //Run metadata retriever; generate initial wmo_list and 
 //run wrapper with all wmos
@@ -47,6 +56,7 @@ const param_content = document.getElementById('param_content');
 const reset_clicked = document.getElementById('reset');
 const map_content = document.getElementById('map_content');
 const slider_click = document.getElementById('slider_container')
+const wmo_form = document.getElementById('wmo_form')
 
 fileInput.addEventListener('change', handleFileSelect);
 
@@ -56,10 +66,11 @@ reset_clicked.addEventListener('click', function(event){
   let selected_bottle_param = "NITRAT";
   let plot_title = "Nitrate"
   let selected_units = "\u03BCmol/kg";
+  selected_wmo = ""
 
-  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist)
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo)
   display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
-  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores",max_dist);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",max_dist);
 
   slider_container.innerHTML = `<div style="display: grid; border: 1px solid black; margin-bottom: 5px;">
       <div id = label style="font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;padding: 0px; font-size: 14px;">Filter distance (km)</div>
@@ -90,8 +101,38 @@ reset_clicked.addEventListener('click', function(event){
   );
 });
 
+wmo_form.addEventListener('submit', function(event) {
+    //The browser will reload the page by default when a form is submitted. 
+    //preventDefault() prevents this behavior.
+    event.preventDefault();
+    selected_wmo = Number(document.getElementById('wmo_input').value);
+    if(Number(document.getElementById('wmo_input').value)==0){
+      selected_wmo = "";
+    }
+    refresh()
+
+    //Filter copy of plot data
+    display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo)
+    display_plot = make_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units);
+    display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,max_dist);
+
+    Plotly.newPlot('plot_content',
+      display_plot.traces,
+      display_plot.layout,
+    { displayModeBar: false }
+  );
+
+  Plotly.newPlot('table_content',
+    display_table.data,
+    display_table.layout,
+    { displayModeBar: false }
+  );
+});
 
 function handleFileSelect(event) {
+  document.getElementById("map_content").style.border = "1px solid black";
+  document.getElementById("map_content").style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)"
+  
   file_path = event.target.files[0];
   Papa.parse(file_path, {
     //Beforefirstline approach for skipping first two lines
@@ -110,13 +151,12 @@ function handleFileSelect(event) {
     //transformHeader: h => h.replace(' ','_'),
     complete: function(results) {
       input_data = results
-
+      wmo_list = [...new Set(input_data.data.map(row => row['WMO']))];
+      autocomplete(document.getElementById("wmo_input"), wmo_list);
       dist_data = input_data.data.map(row => row['dDist (km)'])
       dist_keep = dist_data.map((value,i)=>isFinite(value))
       dist_filt = dist_data.filter((value,i)=>dist_keep[i])
-      min_dist = (Math.min(...dist_filt));
-      med_dist = (ss.median(dist_filt));
-      max_dist = (Math.max(...dist_filt));
+      max_dist = Math.max(...dist_filt);
       dist_filt_sort = dist_filt.sort((a, b) => a - b);
 
       dist_20 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.2)-1]
@@ -124,10 +164,9 @@ function handleFileSelect(event) {
       dist_60 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.6)-1]
       dist_80 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.8)-1]
       
-
-      display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist)
+      display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,"")
       display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
-      display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores",max_dist);
+      display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",max_dist);
       
       slider_container.innerHTML = `<div style="display: grid; border: 1px solid black; margin-bottom: 5px;">
       <div id = label style="font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;padding: 2px; font-size: 14px;">Filter distance (km)</div>
@@ -148,9 +187,9 @@ function handleFileSelect(event) {
       rangeslider.oninput = function () {
         refresh()
 
-        display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,this.value)
+        display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,this.value,"")
         display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,this.value);
-        display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores",this.value);
+        display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",this.value);
       
         Plotly.newPlot('plot_content',
             display_plot.hist_trace,
@@ -176,12 +215,15 @@ function handleFileSelect(event) {
         display_table.layout,
         { displayModeBar: false }
       );
+
+      document.getElementById("plot_content").style.border = "1px solid black";
+      document.getElementById("plot_content").style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)"
+  
+      document.getElementById("table_content").style.border = "1px solid black";
+      document.getElementById("table_content").style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)"
     }
   });
 }
-
-
-
 
 param_content.addEventListener("click",function(event){
   refresh();
@@ -212,11 +254,23 @@ param_content.addEventListener("click",function(event){
       selected_float_param = "Float pCO2_LIAR"
       selected_bottle_param = "PCO2_INSITU"
     }
+    if(plot_title === "Temperature"){
+      selected_units =""
+      selected_float_param = "Float Temperature"
+      selected_bottle_param = "CTDTMP"
+    }
+    if(plot_title === "Salinity"){
+      selected_units = ""
+      selected_float_param = "Float Salinity"
+      selected_bottle_param = "CTDSAL"
+    }
+
     if(plot_title === "Alkalinity"){
       selected_units ="\u03BCmol/kg"
       selected_float_param = "Float TALK_LIAR"
       selected_bottle_param = "ALKALI"
     }
+
     if(plot_title === "Chlorophyll"){
       selected_units = "mg/m^3"
       selected_float_param = "Float Chl_a"
@@ -236,7 +290,7 @@ param_content.addEventListener("click",function(event){
     }
 
     display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
-    display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",sort_column="z-scores",max_dist);
+    display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",max_dist);
 
     Plotly.newPlot('plot_content',
       display_plot.hist_trace,
@@ -250,29 +304,6 @@ param_content.addEventListener("click",function(event){
       { displayModeBar: false }
     );
 
-  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist)
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,"")
   }
 })
-
-function calculate_diff(float,bottle,aux){
-  //Create keep as array of booleans indicating whether numeric values are available
-  //for both x and y at the given index
-  const keep = float.map((val,i) => Number.isFinite(val) && Number.isFinite(bottle[i]));
-
-  let aux_filter = null;
-  if(aux != null){
-    //.filter() iterates through an array and only keeps elements that pass a 
-    //conditional test. In the following, the test is just whether the corresponding
-    //value of keep is true/false.
-    aux_filter = aux.filter((_,i)=>keep[i]);
-  }
-
-  //x.filter only retains values from x where keep == TRUE
-  const float_filter = float.filter((_,i)=>keep[i]);
-  //y.filter only retains values from y where keep == TRUE
-  const bottle_filter = bottle.filter((_,i)=>keep[i]);
-  //x_filter.map calculates the difference between x_filter and y_filter
-  //for each element in x_filter.
-  const diff = float_filter.map((val,i) => val-bottle_filter[i]);
-  return {diff,aux_filter,float_filter,bottle_filter};
-}
