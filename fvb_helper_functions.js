@@ -344,7 +344,7 @@ function find_complete_rows(x,y,booleans){
 }
 
 async function make_map(plot_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo){
-
+  console.log(selected_wmo)
   wmo_data = plot_data.data.map(row => row["WMO"]);
   lat_data = plot_data.data.map(row => row["LATITUDE"])
   lon_data = plot_data.data.map(row => row["LONGITUDE"])

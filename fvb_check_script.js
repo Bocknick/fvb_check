@@ -70,7 +70,7 @@ reset_clicked.addEventListener('click', function(event){
 
   display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo)
   display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
-  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",max_dist);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,max_dist);
 
   slider_container.innerHTML = `<div style="display: grid; border: 1px solid black; margin-bottom: 5px;">
       <div id = label style="font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;padding: 0px; font-size: 14px;">Filter distance (km)</div>
@@ -151,7 +151,13 @@ function handleFileSelect(event) {
     //transformHeader: h => h.replace(' ','_'),
     complete: function(results) {
       input_data = results
-      wmo_list = [...new Set(input_data.data.map(row => row['WMO']))];
+      wmo_list = input_data.data.map(row => row['WMO'])
+      float_nitrate = input_data.data.map(row => row[selected_float_param])
+      bottle_nitrate = input_data.data.map(row => row[selected_bottle_param])
+      complete_rows = float_nitrate.map((value,i)=>value !== null & bottle_nitrate[i] !== null);
+      wmo_list = wmo_list.filter((value,i)=>complete_rows[i]);
+      wmo_list = [...new Set(wmo_list)];
+
       autocomplete(document.getElementById("wmo_input"), wmo_list);
       dist_data = input_data.data.map(row => row['dDist (km)'])
       dist_keep = dist_data.map((value,i)=>isFinite(value))
@@ -187,9 +193,9 @@ function handleFileSelect(event) {
       rangeslider.oninput = function () {
         refresh()
 
-        display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,this.value,"")
+        display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,this.value,selected_wmo)
         display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,this.value);
-        display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",this.value);
+        display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,this.value);
       
         Plotly.newPlot('plot_content',
             display_plot.hist_trace,
