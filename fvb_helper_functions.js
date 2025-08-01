@@ -267,12 +267,7 @@ function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle
   let z_scores = diff_values.map(value => clean_z(value,diff_mean,diff_sd))
 
   let wmo_rows = find_wmo_rows(wmo_data,selected_wmo);
-  //console.log(wmo_rows.length,"Rows in Boolean", boolean_sum(wmo_rows),"retained")
-  //console.log("Retained rows after WMO filter ", boolean_sum(wmo_rows))
   final_rows = find_dist_rows(dist_data,max_dist,wmo_rows);
-  //console.log("Retained rows after distance filter ", boolean_sum(final_rows))
-  //console.log(keep_rows)
-  // console.log(boolean_sum(keep_rows));
   // NOTE! Missing values should not be filtered out!!
   let cruise_filt = filter_values(cruise_data,final_rows);
   let wmo_filt = filter_values(wmo_data,final_rows);
@@ -281,16 +276,6 @@ function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle
   let bottle_filt = filter_values(bottle_data,final_rows);
   let diff_filt = filter_values(diff_values,final_rows);
   let z_filt = filter_values(z_scores,final_rows);
-
-  // console.log("Nulls in final bottle vector", null_sum(bottle_filt));
-  // console.log("Retained rows: ", boolean_sum(final_rows));
-
-  // console.log("Selected WMO:",selected_wmo)
-  // console.log("Float data:",float_filt.length)
-  // console.log("Bottle data:",bottle_filt.length)
-  // console.log("Depth data:",depth_filt.length)
-  // console.log("Dist data:",diff_filt.length)
-  // console.log("Max dist:",max_dist)
 
   sorted_indices = z_filt
     .map((value,index) => ({value,index}))
@@ -317,17 +302,22 @@ function avg_by_group(groups,values){
 
   for(let i = 0; i < unique_groups.length; i++){
     current_group = unique_groups[i]
-    keepers = groups.map((value,i) => value == current_group)
+    //Create boolean indicating rows belonging to current group
+    keepers = groups.map(value => value === current_group)
+    //Filter values belonging to current group
     values_filt = values.filter((value,i)=>keepers[i])
 
- 
-    if(typeof values[1] === "number"){
+    //For continuous variables, return average of filtered values
+    if(typeof values_filt[0] === "number"){
       output_values.push(ss.mean(values_filt))
-    }
-    if(typeof values[1] === "string"){
+      //For discrete variables, return first value from group (assumes
+      //values are the same across all rows)
+    } else if (typeof values_filt[0] === "string"){
       output_values.push(values_filt[0])
+    //If value is neither string nor number, 
+    } else {
+      output_values.push(-9999)
     }
-
     output_groups.push(current_group)
   }
   return{output_groups,output_values}
@@ -344,12 +334,11 @@ function find_complete_rows(x,y,booleans){
 }
 
 async function make_map(plot_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo){
-  console.log(selected_wmo)
+  //refresh()
   wmo_data = plot_data.data.map(row => row["WMO"]);
   lat_data = plot_data.data.map(row => row["LATITUDE"])
   lon_data = plot_data.data.map(row => row["LONGITUDE"])
   dist_data = plot_data.data.map(row => row["dDist (km)"])
-
   float_data = plot_data.data.map(row => row[selected_float_param]);
   bottle_data = plot_data.data.map(row => row[selected_bottle_param]);
   
@@ -358,15 +347,14 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
   let dist_rows = find_dist_rows(dist_data,max_dist,wmo_rows);
   let complete_rows = find_complete_rows(float_data,bottle_data,dist_rows);
 
-  console.log(max_dist)
-  console.log(selected_wmo)
   wmo_data_filt = filter_values(wmo_data,complete_rows);
   lat_data_filt = filter_values(lat_data,complete_rows);
   lon_data_filt = filter_values(lon_data,complete_rows);
-  dist_data_filt = filter_values(dist_data,complete_rows)
+  dist_data_filt = filter_values(dist_data,complete_rows);
   float_filt = filter_values(float_data,complete_rows);
   bottle_filt = filter_values(bottle_data,complete_rows);
   diff_filt = float_filt.map((value,i)=>value-bottle_filt[i]);
+
   legend_title = plot_title + " ("+selected_units+")";
   wmo_data_unq = avg_by_group(wmo_data_filt,diff_filt).output_groups
   lat_data_avg = avg_by_group(wmo_data_filt,lat_data_filt).output_values;
@@ -374,8 +362,8 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
   lat_data_avg = avg_by_group(wmo_data_filt,lat_data_filt).output_values;
   diff_data_avg = avg_by_group(wmo_data_filt,diff_filt).output_values;
   dist_data_avg = avg_by_group(wmo_data_filt,dist_data_filt).output_values;
-
-  const {color_scale, min_value, mid_value, max_value } = make_palette(diff_data_avg);
+  
+  const {color_scale, min_value, max_value } = make_palette(diff_data_avg);
 
   var map = L.map('map_content', {
     center: [0,0],
@@ -519,7 +507,6 @@ function find_keeper_rows(x,y,dist_data,filter_dist,wmo_data,selected_wmo){
   return(keep_rows);
 }
 
-
 function make_palette(input_data){
   //Note use of spread operator (...) to unlist array
   const min_value = Math.min(...input_data)
@@ -535,31 +522,6 @@ function make_palette(input_data){
   //palette = chroma.scale('Spectral').colors(data_bins.length)
   //color_values = data_values_binned.map(row => palette[data_bins.indexOf(row)])
   return { color_scale, min_value, mid_value, max_value};
-}
-
-const model_II_regress = (X,Y) => {
-    n = X.length
-    Sx = X.reduce((a,b) => a + b);
-    Sy = Y.reduce((a,b) => a + b,0);
-    xbar = Sx/n;
-    ybar = Sy/n;
-
-    U = X.map(row => row - xbar);
-    V = Y.map(row => row - ybar);
-    UV = U.map((row,i) => row * V[i])
-    SUV = UV.reduce((a,b) => a + b)
-    U2 = U.map(row => row**2);
-    V2 = V.map(row => row**2);
-    SU2 = U2.reduce((a,b) => a + b);
-    SV2 = V2.reduce((a,b) => a+b)
-
-    sigx = (SU2/(n-1))**(1/2)
-    sigy = (SV2/(n-1))**(1/2)
-    slope = ((SV2 - SU2 + Math.sqrt(((SV2 - SU2)**2)+(4 * SUV**2)))/(2*SUV))
-    intercept = ybar - slope * xbar
-    r = SUV/Math.sqrt(SU2 * SV2)
-    r2 = r**2
-    return {slope, intercept, r, r2};
 }
 
 //The HTML runs autocomplete via JS with inp = "myInput" and arr = countries
@@ -669,7 +631,7 @@ function autocomplete(inp, arr) {
     }
   }
 }
-/*execute a function when someone clicks in the document:*/
+
 document.addEventListener("click", function (e) {
     closeAllLists(e.target);
 });

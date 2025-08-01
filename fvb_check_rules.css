@@ -14,7 +14,7 @@
 
 .ui{
   position: absolute;
-  width: 200px;
+  width: 250px;
   margin-bottom: 4px;
   z-index: 1;
 }
@@ -148,6 +148,8 @@ label {
     padding: 0.8em 1em;
 }
 
+
+
 input {
   background-color: #fff;
   width: 100%;
@@ -161,6 +163,7 @@ input {
 input[type=text] {
   height: 40px;
   background-color: #fff;
+  border: 1px solid black;
   font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;
 }
 
@@ -170,7 +173,7 @@ input[type=submit] {
   height: 40px;
   cursor: pointer;
   font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;
-  border-color: black;
+  border: 1px solid black;
 }
 
 .autocomplete-items {

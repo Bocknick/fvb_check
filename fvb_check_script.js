@@ -2,8 +2,8 @@ const container = document.getElementById('app-container');
 container.innerHTML =
     `<div class = "app-container">
         <div class = "ui">
-          <label for="fileInput" class="custom-file-label">Upload File</label>
-          <input type="file" id="fileInput" class="hidden-file-input">
+          <label for="file_input" class="custom-file-label">Upload File</label>
+          <input type="file" id="file_input" class="hidden-file-input">
           <div class = "dropdown" id = "params">
               <button>Parameters</button>
               <div class = "content" id = "param_content">
@@ -20,12 +20,17 @@ container.innerHTML =
                 <a>Distance (time)</a>
               </div>
           </div>
-          <div id = "slider_container"></div>
-          <form id = 'wmo_form' autocomplete="off" style = "width:200px; display:flex; gap: 4px;">
+          <form id = 'dist_form' autocomplete="off" style = "width:250px; display:flex; gap: 4px;">
             <div class="autocomplete" style="flex: 2;">
-                <input id="wmo_input" type="text" placeholder="WMO" style = "width: 100%; font-size: 14px;">
+                <input id="dist_input" type="text" placeholder="Dist. (km)" style = "width: 175px; font-size: 14px;">
             </div>
-            <input type="submit" value = "Submit" style = "flex: 1; margin-bottom: 5px; font-size: 14px; padding: 12px;">
+            <input id = "dist_submit" type="submit" value = "Filter" style = "flex: 1; width: 75px; margin-bottom: 5px; width: 100px; font-size: 14px; padding: 12px;">
+          </form>
+          <form id = 'wmo_form' autocomplete="off" style = "width:250px; display:flex; gap: 4px;">
+            <div class="autocomplete" style="flex: 2;">
+                <input id="wmo_input" type="text" placeholder="WMO" style = "width: 175px; font-size: 14px;">
+            </div>
+            <input id = wmo_submit type="submit" value = "Filter" style = "flex: 1; width: 75px; margin-bottom: 5px; font-size: 14px; padding: 12px;">
           </form>
           <div id = "reset">
             <button>Reset Selections</button>
@@ -45,20 +50,23 @@ let selected_float_param = "Float Nitrate";
 let selected_bottle_param = "NITRAT";
 let plot_title = "Nitrate"
 let selected_wmo;
-let max_dist;
+let max_dist = 5000;
 let wmo_list;
 let selected_units = "\u03BCmol/kg";
 //Run metadata retriever; generate initial wmo_list and 
 //run wrapper with all wmos
 
-const fileInput = document.getElementById('fileInput');
+const file_input = document.getElementById('file_input');
 const param_content = document.getElementById('param_content');
 const reset_clicked = document.getElementById('reset');
 const map_content = document.getElementById('map_content');
 const slider_click = document.getElementById('slider_container')
 const wmo_form = document.getElementById('wmo_form')
+const wmo_submit = document.getElementById('wmo_submit')
+const dist_form = document.getElementById('dist_form')
+const dist_submit = document.getElementById('dist_submit')
 
-fileInput.addEventListener('change', handleFileSelect);
+file_input.addEventListener('change', handleFileSelect);
 
 reset_clicked.addEventListener('click', function(event){
   refresh();
@@ -67,27 +75,12 @@ reset_clicked.addEventListener('click', function(event){
   let plot_title = "Nitrate"
   let selected_units = "\u03BCmol/kg";
   selected_wmo = ""
+  max_dist = 5000;
 
   display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo)
   display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
   display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,max_dist);
 
-  slider_container.innerHTML = `<div style="display: grid; border: 1px solid black; margin-bottom: 5px;">
-      <div id = label style="font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;padding: 0px; font-size: 14px;">Filter distance (km)</div>
-      <input type="range" min="0" max=${max_dist} value=${max_dist} class="slider" id="dist_slider"></input>
-      <div id = labels style="display: flex; flex-direction: row;
-      font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;
-      font-size: 10px;
-      justify-content: space-between">
-      <div>0</div>
-      <div>${dist_20.toFixed(0)}</div>
-      <div>${dist_40.toFixed(0)}</div>
-      <div>${dist_60.toFixed(0)}</div>
-      <div>${dist_80.toFixed(0)}</div>
-      <div>${max_dist.toFixed(0)}</div>
-      </div>`
-
-  
   Plotly.newPlot('plot_content',
     display_plot.hist_trace,
     display_plot.layout,
@@ -101,7 +94,30 @@ reset_clicked.addEventListener('click', function(event){
   );
 });
 
-wmo_form.addEventListener('submit', function(event) {
+dist_submit.addEventListener("click",function(event){
+  refresh()
+  event.preventDefault();
+  max_dist = Number(document.getElementById('dist_input').value);
+
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo)
+  display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,max_dist);
+
+  Plotly.newPlot('plot_content',
+      display_plot.hist_trace,
+      display_plot.layout,
+    { displayModeBar: false }
+  );
+
+  Plotly.newPlot('table_content',
+    display_table.data,
+    display_table.layout,
+    { displayModeBar: false }
+  );
+});
+
+wmo_submit.addEventListener('click', function(event) {
+  refresh()
     //The browser will reload the page by default when a form is submitted. 
     //preventDefault() prevents this behavior.
     event.preventDefault();
@@ -109,8 +125,7 @@ wmo_form.addEventListener('submit', function(event) {
     if(Number(document.getElementById('wmo_input').value)==0){
       selected_wmo = "";
     }
-    refresh()
-
+    
     //Filter copy of plot data
     display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo)
     display_plot = make_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units);
@@ -170,46 +185,12 @@ function handleFileSelect(event) {
       dist_60 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.6)-1]
       dist_80 = dist_filt_sort[Math.floor(dist_filt_sort.length * 0.8)-1]
       
+      document.getElementById("dist_input").placeholder = `Dist. (0 - ${max_dist.toFixed(0)} km)`
+
       display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,"")
       display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist);
       display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo="",max_dist);
       
-      slider_container.innerHTML = `<div style="display: grid; border: 1px solid black; margin-bottom: 5px;">
-      <div id = label style="font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;padding: 2px; font-size: 14px;">Filter distance (km)</div>
-      <input type="range" min="0" max=${max_dist} value=${max_dist} class="slider" id="dist_slider"></input>
-      <div id = labels style="display: flex; flex-direction: row;
-      font-family: Menlo,Consolas,monaco,monospace;padding:.8em 1em;
-      font-size: 10px;
-      justify-content: space-between">
-      <div>0</div>
-      <div>${dist_20.toFixed(0)}</div>
-      <div>${dist_40.toFixed(0)}</div>
-      <div>${dist_60.toFixed(0)}</div>
-      <div>${dist_80.toFixed(0)}</div>
-      <div>${max_dist.toFixed(0)}</div>
-      </div>`
-
-      let rangeslider = document.getElementById("dist_slider");
-      rangeslider.oninput = function () {
-        refresh()
-
-        display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,this.value,selected_wmo)
-        display_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,this.value);
-        display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,this.value);
-      
-        Plotly.newPlot('plot_content',
-            display_plot.hist_trace,
-            display_plot.layout,
-          { displayModeBar: false }
-          );
-
-        Plotly.newPlot('table_content',
-          display_table.data,
-          display_table.layout,
-          { displayModeBar: false }
-        );
-      }
-
       Plotly.newPlot('plot_content',
         display_plot.hist_trace,
         display_plot.layout,
@@ -261,12 +242,12 @@ param_content.addEventListener("click",function(event){
       selected_bottle_param = "PCO2_INSITU"
     }
     if(plot_title === "Temperature"){
-      selected_units =""
+      selected_units ="\u00B0C"
       selected_float_param = "Float Temperature"
       selected_bottle_param = "CTDTMP"
     }
     if(plot_title === "Salinity"){
-      selected_units = ""
+      selected_units = "psu"
       selected_float_param = "Float Salinity"
       selected_bottle_param = "CTDSAL"
     }
