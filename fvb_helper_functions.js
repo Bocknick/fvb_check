@@ -13,7 +13,7 @@ function make_table(table_data,float_param,bottle_param,selected_wmo,max_dist){
     //bottle_data = bottle_data.map((value,i)=>value=0)
     table_headers = [[`<b>Cruise</b>`],[`<b>WMO</b>`],
                     ["<b>Distance</b>"],[`<b>Z Score</b>`]];
-    table_data = prep_distance_table(cruise_data,wmo_data,diff_data,selected_wmo,max_dist);
+    table_data = prep_distance_tablfe(cruise_data,wmo_data,diff_data,selected_wmo,max_dist);
   } else{
     table_headers = [[`<b>Cruise</b>`],[`<b>WMO</b>`],[`<b>Depth</b>`],[`<b>Float</b>`], ["<b>Bottle</b>"],
             ["<b>Float - Bottle</b>"],[`<b>Z Score</b>`]];
@@ -68,16 +68,18 @@ function plot_wrapper(input_data,selected_wmo,selected_float_param,selected_bott
 function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,selected_units){
   cruise_data = plot_data.data.map(row => row["CRUISE"]);
   wmo_data = plot_data.data.map(row => row["WMO"]);
+  expo_data = plot_data.data.map(row => row["CCHDO file"]);
   depth_data = plot_data.data.map(row => row["CTDPRS"]);
   float_data = plot_data.data.map(row => row[float_param]);
   bottle_data = plot_data.data.map(row => row[bottle_param]);
 
   wmo_rows = find_matching_wmo(wmo_data,selected_wmo);
   wmo_filt = filter_values(wmo_data,wmo_rows);
+  expo_filt = filter_values(expo_data,wmo_rows);
   depth_filt = filter_values(depth_data,wmo_rows);
   float_filt = filter_values(float_data,wmo_rows);
   bottle_filt = filter_values(bottle_data,wmo_rows)
-
+  console.log(expo_filt)
   var traces = [];
   var layout = {
     autoexpand: true,
@@ -95,8 +97,8 @@ function make_plot(plot_data,float_param,bottle_param,plot_title,selected_wmo,se
     hovermode: 'closest',
     showlegend: false,
     font: {family:  "Menlo,Consolas,monaco,monospace", size: 14},
-    title: {text: `<b>${selected_wmo}</b>`,
-            font: {family:  "Menlo,Consolas,monaco,monospace",size: 16},x:0.5, y: 0.97},
+    title: {text: `<b>WMO: ${selected_wmo} Expo: ${expo_filt[0].slice(0,12)}</b>`,
+            font: {family:  "Menlo,Consolas,monaco,monospace",size: 14},x:0.55, y: 0.97},
     plot_bgcolor: 'white',
   };
   var bottle_trace = {
@@ -336,18 +338,20 @@ function find_complete_rows(x,y,booleans){
 async function make_map(plot_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo){
   //refresh()
   wmo_data = plot_data.data.map(row => row["WMO"]);
+  expo_data = plot_data.data.map(row => row["CCHDO file"]);
   lat_data = plot_data.data.map(row => row["LATITUDE"])
   lon_data = plot_data.data.map(row => row["LONGITUDE"])
   dist_data = plot_data.data.map(row => row["dDist (km)"])
   float_data = plot_data.data.map(row => row[selected_float_param]);
   bottle_data = plot_data.data.map(row => row[selected_bottle_param]);
-  
+
   //complete_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,selected_wmo);
   let wmo_rows = find_wmo_rows(wmo_data,selected_wmo);
   let dist_rows = find_dist_rows(dist_data,max_dist,wmo_rows);
   let complete_rows = find_complete_rows(float_data,bottle_data,dist_rows);
 
   wmo_data_filt = filter_values(wmo_data,complete_rows);
+  expo_data_filt = filter_values(expo_data,complete_rows);
   lat_data_filt = filter_values(lat_data,complete_rows);
   lon_data_filt = filter_values(lon_data,complete_rows);
   dist_data_filt = filter_values(dist_data,complete_rows);
@@ -356,7 +360,8 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
   diff_filt = float_filt.map((value,i)=>value-bottle_filt[i]);
 
   legend_title = plot_title + " ("+selected_units+")";
-  wmo_data_unq = avg_by_group(wmo_data_filt,diff_filt).output_groups
+  wmo_data_unq = avg_by_group(wmo_data_filt,diff_filt).output_groups;
+  expo_data_unq = avg_by_group(wmo_data_filt,expo_data_filt).output_values;
   lat_data_avg = avg_by_group(wmo_data_filt,lat_data_filt).output_values;
   lon_data_avg = avg_by_group(wmo_data_filt,lon_data_filt).output_values;
   lat_data_avg = avg_by_group(wmo_data_filt,lat_data_filt).output_values;
@@ -387,8 +392,9 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
 
   for(let i = 0; i < lon_data_avg.length; i++){
     let tooltip_string = `<b>WMO: </b> ${wmo_data_unq[i]}<br>
-                          <b>LAT: </b> ${lat_data_avg[i].toFixed(2)}<br>
-                          <b>LON: </b> ${lon_data_avg[i].toFixed(2)}<br>
+                          <b>Expo: </b> ${expo_data_unq[i].slice(0,-8)}<br>
+                          <b>Lat: </b> ${lat_data_avg[i].toFixed(2)}<br>
+                          <b>Lon: </b> ${lon_data_avg[i].toFixed(2)}<br>
                           <b>Float/Bottle Distance</b> ${dist_data_avg[i].toFixed(2)}`
     L.circleMarker([lat_data_avg[i],lon_data_avg[i]],
       {fillColor: color_scale(diff_data_avg[i]).hex(),color: "black",weight: 0.5,fillOpacity: 1,radius: 2.5})

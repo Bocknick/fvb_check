@@ -35,6 +35,8 @@ container.innerHTML =
           <div id = "reset">
             <button>Reset Selections</button>
           </div>
+          <div id = "open_file">
+          </div>
         </div>
         <div id="map_content"></div>
         <div id="plot_content"></div>
@@ -50,6 +52,7 @@ let selected_float_param = "Float Nitrate";
 let selected_bottle_param = "NITRAT";
 let plot_title = "Nitrate"
 let selected_wmo;
+let file_path;
 let max_dist = 5000;
 let wmo_list;
 let selected_units = "\u03BCmol/kg";
@@ -149,6 +152,13 @@ function handleFileSelect(event) {
   document.getElementById("map_content").style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)"
   
   file_path = event.target.files[0];
+  console.log(file_path.name)
+  //const open_file = document.getElementById('app-open_file');
+  //open_file.innerHTML
+  document.getElementById("open_file").style.fontFamily = "Menlo,Consolas,monaco,monospace";
+  document.getElementById("open_file").style.fontSize = "14px";
+  document.getElementById("open_file").innerHTML=`<a><b>${file_path.name.slice(0,-4)}</b></a>`;
+
   Papa.parse(file_path, {
     //Beforefirstline approach for skipping first two lines
     //courtesy of Chat GPT.
@@ -165,6 +175,7 @@ function handleFileSelect(event) {
     transformHeader: h => h.replace(/\[.+\]/g,''),
     //transformHeader: h => h.replace(' ','_'),
     complete: function(results) {
+      console.log(results)
       input_data = results
       wmo_list = input_data.data.map(row => row['WMO'])
       float_nitrate = input_data.data.map(row => row[selected_float_param])
