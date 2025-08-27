@@ -126,10 +126,11 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
       x: bottle_filt,
       y: depth_filt,
       type: 'scatter',
-      mode: 'markers',
+      mode: 'markers+lines',
       name: "Bottle Data",
-      opacity: 0.7,
-      marker: {line: {width: 1},size: 4, opacity: 0.7, color: '#0397A8'},
+      opacity: 0.8,
+      marker: {line: {width: 1}, size: 6, opacity: 0.8, color: '#0397A8'},
+      line: {width: 2, color: '#0397A8'},
       xaxis: "x1",
       yaxis: "y1"
     }
@@ -138,10 +139,11 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
       x: float_filt,
       y: depth_filt,
       type: 'scatter',
-      mode: 'markers',
+      mode: 'markers+lines',
       name: 'Float Data',
-      opacity: 0.7,
-      marker: {line: {width: 1},size: 4, opacity: 0.7, color: '#F89D28'},
+      opacity: 0.8,
+      marker: {line: {width: 1}, size: 6, opacity: 0.8, color: '#F89D28'},
+      line: {width: 2, color: '#F89D28'},
       xaxis: "x1",
       yaxis: "y1"
     }
@@ -193,9 +195,9 @@ function make_anomaly_plot(plot_data,float_param,bottle_param,plot_title,selecte
       y: depth_filt,
       type: 'scatter',
       mode: 'markers',
-      name: "Bottle Data",
-      opacity: 0.7,
-      marker: {line: {width: 1},size: 4, opacity: 0.7, color: '#0397A8'},
+      name: "Float - Bottle Difference",
+      opacity: 0.8,
+      marker: {line: {width: 1}, size: 6, opacity: 0.8, color: '#0397A8'},
       xaxis: "x1",
       yaxis: "y1"
     }
