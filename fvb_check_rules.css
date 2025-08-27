@@ -1,5 +1,66 @@
 * { box-sizing: border-box; }
 
+/* Loading state styles */
+.loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.loading * {
+  pointer-events: none;
+}
+
+/* Message system styles */
+.message {
+  animation: slideIn 0.3s ease-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.message-error {
+  border-left: 4px solid #dc3545;
+}
+
+.message-warning {
+  border-left: 4px solid #ffc107;
+}
+
+.message-info {
+  border-left: 4px solid #17a2b8;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Improved form styling */
+form input[type="number"] {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+form input[type="number"]:focus {
+  outline: none;
+  border-color: #4D9DE0;
+  box-shadow: 0 0 0 2px rgba(77, 157, 224, 0.2);
+}
+
+/* Enhanced button hover effects */
+.custom-file-label:hover,
+.dropdown button:hover,
+#reset button:hover {
+  background-color: #d4a726 !important;
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
 .app-container{
     display: grid;
     grid-template-columns: 250px 300px 300px 500px;

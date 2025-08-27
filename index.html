@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>FVB Check - Oceanographic Data Analysis Tool</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="fvb_check_rules.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -15,9 +18,14 @@
     <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.5/dist/simple-statistics.min.js"></script>
 </head>
 <body>
-    <div id = "app-container"></div>
+    <div id="app-container"></div>
+    
+    <!-- Load modules in dependency order -->
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script src="state.js"></script>
+    <script src="visualization.js"></script>
     <script src="fvb_helper_functions.js"></script>
     <script src="fvb_check_script.js"></script>
-    
 </body>
 </html>
