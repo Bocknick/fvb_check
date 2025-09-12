@@ -54,11 +54,14 @@ function make_table(table_data,float_param,bottle_param,selected_wmo,selected_cr
 }
 
 function plot_wrapper(input_data,clicked_wmo,selected_float_param,selected_bottle_param,selected_cruise){
+  //Set global selected_wmo to clicked_wmo, ensuring that selection is reflected across other functions
+  selected_wmo = clicked_wmo;
   document.getElementById("anomaly_plot_content").style.gridColumn = "3/4"
   document.getElementById("table_content").style.gridColumn = "4/5"
   document.getElementById("anomaly_plot_content").style.border = "1px solid black";
   document.getElementById("anomaly_plot_content").style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)"
 
+  console.log(clicked_wmo);
   profile_plot = make_profile_plot(input_data,selected_float_param,selected_bottle_param,plot_title,clicked_wmo,selected_units,selected_cruise);
   anomaly_plot = make_anomaly_plot(input_data,selected_float_param,selected_bottle_param,plot_title,clicked_wmo,selected_units,selected_cruise);
   display_table = make_table(input_data,selected_float_param,selected_bottle_param,clicked_wmo,selected_cruise,max_dist = 5000,true);
@@ -90,6 +93,7 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
   float_data = plot_data.data.map(row => row[float_param]);
   bottle_data = plot_data.data.map(row => row[bottle_param]);
 
+
   wmo_rows = find_matching_wmo(wmo_data,selected_wmo[0]);
   cruise_filt = filter_values(cruise_data,wmo_rows);
   wmo_filt = filter_values(wmo_data,wmo_rows);
@@ -97,8 +101,6 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
   depth_filt = filter_values(depth_data,wmo_rows);
   float_filt = filter_values(float_data,wmo_rows);
   bottle_filt = filter_values(bottle_data,wmo_rows)
-
-
   
   var traces = [];
   var layout = {
@@ -126,10 +128,10 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
       x: bottle_filt,
       y: depth_filt,
       type: 'scatter',
-      mode: 'markers',
+      mode: 'markers+lines',
       name: "Bottle Data",
       opacity: 0.7,
-      marker: {line: {width: 1},size: 4, opacity: 0.7, color: '#0397A8'},
+      marker: {line: {width: 0.3},size: 6, opacity: 0.7, color: '#0397A8'},
       xaxis: "x1",
       yaxis: "y1"
     }
@@ -138,10 +140,10 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
       x: float_filt,
       y: depth_filt,
       type: 'scatter',
-      mode: 'markers',
+      mode: 'markers+lines',
       name: 'Float Data',
       opacity: 0.7,
-      marker: {line: {width: 1},size: 4, opacity: 0.7, color: '#F89D28'},
+      marker: {line: {width: 0.3}, size: 6, opacity: 0.7, color: '#F89D28'},
       xaxis: "x1",
       yaxis: "y1"
     }
@@ -195,7 +197,7 @@ function make_anomaly_plot(plot_data,float_param,bottle_param,plot_title,selecte
       mode: 'markers',
       name: "Bottle Data",
       opacity: 0.7,
-      marker: {line: {width: 1},size: 4, opacity: 0.7, color: '#0397A8'},
+      marker: {line: {width: 1},size: 5, opacity: 0.7, color: '#0397A8'},
       xaxis: "x1",
       yaxis: "y1"
     }
@@ -212,9 +214,14 @@ function make_summary_plot(plot_data,float_param,bottle_param,plot_title,max_dis
   bottle_data = plot_data.data.map(row => row[bottle_param]);
 
   complete_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,selected_wmo,cruise_data,selected_cruise);
-
   diff_data = float_data.map((value,i)=>value-bottle_data[i])
   diff_data = diff_data.filter((value,i)=>complete_rows[i])
+
+  //If distance parameter selected, bottle_param will be "". In this case,
+  //set diff data to float data.
+  if(bottle_param === ""){
+    diff_data = float_data
+  }
 
   var layout = {
     autoexpand: true,
@@ -272,15 +279,14 @@ clean_z = function(x,mean,sd){
   return ((x-mean)/sd).toFixed(2)
 }
 
-function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,max_dist,cruise_data,selected_cruise){
-  //Calculate differences for all data to get z-scores
+function prep_distance_table(cruise_data,wmo_data,dist_data,selected_wmo,max_dist,selected_cruise){
+  //Calculate average distances for each cruise/wmo
   cruise_avg = avg_by_group(wmo_data,cruise_data).output_values
   dist_avg = avg_by_group(wmo_data,dist_data).output_values
   wmo_avg = avg_by_group(wmo_data,cruise_data).output_groups
-  
-  keep = find_keeper_rows(dist_avg,dist_data,max_dist,wmo_data,selected_wmo,cruise_data,selected_cruise);
 
-  //keep = dist_avg.map((value,i) => Number.isFinite(value));
+  keep = dist_avg.map((value,i) => Number.isFinite(value));
+
   dist_no_nulls = dist_avg.filter((value,i)=>keep[i]);
   dist_mean = ss.mean(dist_no_nulls);
   dist_sd = ss.standardDeviation(dist_no_nulls)
@@ -335,7 +341,6 @@ function prep_difference_table(cruise_data,wmo_data,depth_data,float_data,bottle
   let z_scores = diff_values.map(value => clean_z(value,diff_mean,diff_sd))
 
   complete_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,selected_wmo,cruise_data,selected_cruise);
-
   // NOTE! Missing values should not be filtered out!!
   let cruise_filt = filter_values(cruise_data,complete_rows);
   let wmo_filt = filter_values(wmo_data,complete_rows);
@@ -375,7 +380,6 @@ function avg_by_group(groups,values){
     keepers = groups.map(value => value === current_group)
     //Filter values belonging to current group
     values_filt = values.filter((value,i)=>keepers[i])
-
     //For continuous variables, return average of filtered values
     if(typeof values_filt[0] === "number"){
       output_values.push(ss.mean(values_filt))
@@ -404,6 +408,7 @@ function find_complete_rows(x,y,booleans){
 
 async function make_map(plot_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise){
   //refresh()
+
   wmo_data = plot_data.data.map(row => row["WMO"]);
   cruise_data = plot_data.data.map(row => row["CRUISE"]);
   expo_data = plot_data.data.map(row => row["CCHDO file"]);
@@ -412,6 +417,12 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
   dist_data = plot_data.data.map(row => row["dDist (km)"])
   float_data = plot_data.data.map(row => row[selected_float_param]);
   bottle_data = plot_data.data.map(row => row[selected_bottle_param]);
+
+  //If distance data is selected, selected_bottle_param will be "". In
+  //this case, set bottle data to 0
+  if(selected_bottle_param===""){
+    bottle_data = bottle_data.map((value,i) => value = 0)
+  }
 
   complete_rows = find_keeper_rows(float_data,bottle_data,dist_data,max_dist,wmo_data,selected_wmo,cruise_data,selected_cruise);
 
@@ -423,7 +434,7 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
   float_filt = filter_values(float_data,complete_rows);
   bottle_filt = filter_values(bottle_data,complete_rows);
   diff_filt = float_filt.map((value,i)=>value-bottle_filt[i]);
-
+  
   legend_title = plot_title + " ("+selected_units+")";
   wmo_data_unq = avg_by_group(wmo_data_filt,diff_filt).output_groups;
   expo_data_unq = avg_by_group(wmo_data_filt,expo_data_filt).output_values;

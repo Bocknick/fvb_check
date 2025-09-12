@@ -225,6 +225,7 @@ cruise_submit.addEventListener('click', function(event) {
 });
 
 function handleFileSelect(event) {
+  refresh();
   document.getElementById("map_content").style.border = "1px solid black";
   document.getElementById("map_content").style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)"
   
@@ -372,21 +373,40 @@ param_content.addEventListener("click",function(event){
       selected_float_param = "Bottle - Float Date (hours)"
       selected_bottle_param = ""
     }
+    //selected_wmo will be of length 1 if WMO has been selected by a user. In this case, a profile + anomaly plot should be displayed
+    if(selected_wmo.length === 1){
+        profile_plot = make_profile_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units,selected_cruise);
+        anomaly_plot = make_anomaly_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units,selected_cruise);
+        display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist = 5000,true);
 
-    summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_cruise);
-    display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist);
 
     Plotly.newPlot('profile_plot_content',
-      summary_plot.hist_trace,
-      summary_plot.layout,
+      profile_plot.traces,
+      profile_plot.layout,
       { displayModeBar: false }
     );
 
-    Plotly.newPlot('table_content',
-      display_table.data,
-      display_table.layout,
+    Plotly.newPlot('anomaly_plot_content',
+      [anomaly_plot.diff_trace],
+      anomaly_plot.layout,
       { displayModeBar: false }
     );
+    } else{
+      summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_cruise);
+      display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist);
+
+      Plotly.newPlot('profile_plot_content',
+        summary_plot.hist_trace,
+        summary_plot.layout,
+        { displayModeBar: false }
+      );
+
+      Plotly.newPlot('table_content',
+        display_table.data,
+        display_table.layout,
+        { displayModeBar: false }
+      );
+    }
 
   display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise)
   }
