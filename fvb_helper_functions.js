@@ -93,7 +93,6 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
   float_data = plot_data.data.map(row => row[float_param]);
   bottle_data = plot_data.data.map(row => row[bottle_param]);
 
-
   wmo_rows = find_matching_wmo(wmo_data,selected_wmo[0]);
   cruise_filt = filter_values(cruise_data,wmo_rows);
   wmo_filt = filter_values(wmo_data,wmo_rows);
@@ -102,6 +101,16 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
   float_filt = filter_values(float_data,wmo_rows);
   bottle_filt = filter_values(bottle_data,wmo_rows)
   
+  //Remove null values to avoid gaps in plots
+  bottle_keep = bottle_filt.map((value,i)=>value != null)
+  float_keep = float_filt.map((value,i)=>value != null)
+
+  bottle_clean = bottle_filt.filter((value,i)=>bottle_keep[i])
+  bottle_depths = depth_filt.filter((value,i)=>bottle_keep[i])
+
+  float_clean = float_filt.filter((value,i)=>float_keep[i])
+  float_depths = depth_filt.filter((value,i)=>float_keep[i])
+
   var traces = [];
   var layout = {
     autoexpand: true,
@@ -124,9 +133,10 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
             font: {family:  "Menlo,Consolas,monaco,monospace",size: 14},x:0.55, y: 0.97},
     plot_bgcolor: 'white',
   };
+
   var bottle_trace = {
-      x: bottle_filt,
-      y: depth_filt,
+      x: bottle_clean,
+      y: bottle_depths,
       type: 'scatter',
       mode: 'markers+lines',
       name: "Bottle Data",
@@ -137,8 +147,8 @@ function make_profile_plot(plot_data,float_param,bottle_param,plot_title,selecte
     }
 
     var float_trace = {
-      x: float_filt,
-      y: depth_filt,
+      x: float_clean,
+      y: float_depths,
       type: 'scatter',
       mode: 'markers+lines',
       name: 'Float Data',
