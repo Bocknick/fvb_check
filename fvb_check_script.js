@@ -58,7 +58,8 @@ let input_data;
 let selected_float_param = "Float Nitrate";
 let selected_bottle_param = "NITRAT";
 let plot_title = "Nitrate"
-let selected_wmo;
+let map_wmo;
+let profle_wmo;
 let file_path;
 let max_dist = 5000;
 let wmo_list;
@@ -88,16 +89,17 @@ reset_clicked.addEventListener('click', function(event){
   let plot_title = "Nitrate"
   let selected_units = "\u03BCmol/kg";
   selected_cruise = cruise_list;
-  selected_wmo = wmo_list;
+  map_wmo = wmo_list;
+  profile_wmo = wmo_list;
 
   document.getElementById("table_content").style.gridColumn = "3/5"
   document.getElementById("map_content").style.border = "1px solid black";
   document.getElementById("map_content").style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)"
   max_dist = 5000;
 
-  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise)
-  summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise);
-  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist);
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,map_wmo,selected_cruise)
+  summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,profile_wmo,selected_cruise);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,profile_wmo,selected_cruise,max_dist);
 
   Plotly.newPlot('profile_plot_content',
     summary_plot.hist_trace,
@@ -126,11 +128,12 @@ dist_submit.addEventListener("click",function(event){
   let plot_title = "Nitrate"
   let selected_units = "\u03BCmol/kg";
   selected_cruise = cruise_list;
-  selected_wmo = wmo_list;
+  map_wmo = wmo_list;
+  profile_wmo = wmo_list;
 
-  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise);
-  summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise);
-  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist);
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,map_wmo,selected_cruise);
+  summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,profile_wmo,selected_cruise);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,profile_wmo,selected_cruise,max_dist);
 
   document.getElementById("table_content").style.gridColumn = "3/5"
 
@@ -154,12 +157,14 @@ wmo_submit.addEventListener('click', function(event) {
     event.preventDefault();
     //If the wmo_input field is empty, do nothing
     if(Number(document.getElementById('wmo_input').value)==0){
-      selected_wmo = wmo_list;
+      map_wmo = wmo_list;
+      profile_wmo = wmo_list;
       return;
     }
     
     refresh()
-    selected_wmo = [Number(document.getElementById('wmo_input').value)];
+    map_wmo = [Number(document.getElementById('wmo_input').value)];
+    profile_wmo = [Number(document.getElementById('wmo_input').value)];
     selected_cruise = cruise_list;
 
     document.getElementById("anomaly_plot_content").style.gridColumn = "3/4"
@@ -168,10 +173,10 @@ wmo_submit.addEventListener('click', function(event) {
     document.getElementById("anomaly_plot_content").style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.1)"
 
     //Filter copy of plot data
-    display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise);
-    profile_plot = make_profile_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units,selected_cruise);
-    anomaly_plot = make_anomaly_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units,selected_cruise);
-    display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist = 5000,true);
+    display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,map_wmo,selected_cruise);
+    profile_plot = make_profile_plot(input_data,selected_float_param,selected_bottle_param,plot_title,profile_wmo,selected_units,selected_cruise);
+    anomaly_plot = make_anomaly_plot(input_data,selected_float_param,selected_bottle_param,plot_title,profile_wmo,selected_units,selected_cruise);
+    display_table = make_table(input_data,selected_float_param,selected_bottle_param,profile_wmo,selected_cruise,max_dist = 5000,true,order_by='depth');
 
 
     Plotly.newPlot('profile_plot_content',
@@ -205,11 +210,12 @@ cruise_submit.addEventListener('click', function(event) {
   }
   refresh()
   selected_cruise = document.getElementById('cruise_input').value;
-  selected_wmo = wmo_list;
+  map_wmo = wmo_list;
+  profile_wmo = wmo_list;
   //Filter copy of plot data
-  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise)
-  summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise);
-  display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist);
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,map_wmo,selected_cruise)
+  summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,profile_wmo,selected_cruise);
+  display_table = make_table(input_data,selected_float_param,selected_bottle_param,profile_wmo,selected_cruise,max_dist);
 
   Plotly.newPlot('profile_plot_content',
     summary_plot.hist_trace,
@@ -257,12 +263,13 @@ function handleFileSelect(event) {
 
       float_nitrate = input_data.data.map(row => row[selected_float_param])
       bottle_nitrate = input_data.data.map(row => row[selected_bottle_param])
-      complete_rows = float_nitrate.map((value,i)=>value !== null & bottle_nitrate[i] !== null);
+      complete_rows = float_nitrate.map((value,i)=>value !== null || bottle_nitrate[i] !== null);
 
       wmo_list = input_data.data.map(row => row['WMO'])
       wmo_list = wmo_list.filter((value,i)=>complete_rows[i]);
       wmo_list = [...new Set(wmo_list)];
-      selected_wmo = wmo_list;
+      map_wmo = wmo_list;
+      profile_wmo = wmo_list;
 
       cruise_list = input_data.data.map(row => row['CRUISE'])
       cruise_list = cruise_list.filter((value,i)=>complete_rows[i]);
@@ -285,9 +292,9 @@ function handleFileSelect(event) {
       
       document.getElementById("dist_input").placeholder = `Dist. (0 - ${max_dist.toFixed(0)} km)`
 
-      display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise);
-      profile_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise);
-      display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist);
+      display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,map_wmo,selected_cruise);
+      profile_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,profile_wmo,selected_cruise);
+      display_table = make_table(input_data,selected_float_param,selected_bottle_param,profile_wmo,selected_cruise,max_dist,order_by='z-score');
       
       Plotly.newPlot('profile_plot_content',
         profile_plot.hist_trace,
@@ -373,27 +380,33 @@ param_content.addEventListener("click",function(event){
       selected_float_param = "Bottle - Float Date (hours)"
       selected_bottle_param = ""
     }
-    //selected_wmo will be of length 1 if WMO has been selected by a user. In this case, a profile + anomaly plot should be displayed
-    if(selected_wmo.length === 1){
-        profile_plot = make_profile_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units,selected_cruise);
-        anomaly_plot = make_anomaly_plot(input_data,selected_float_param,selected_bottle_param,plot_title,selected_wmo,selected_units,selected_cruise);
-        display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist = 5000,true);
+    //profile_wmpo will be of length 1 if WMO has been selected by a user. In this case, a profile + anomaly plot should be displayed
+    if(profile_wmo.length === 1){
 
+      profile_plot = make_profile_plot(input_data,selected_float_param,selected_bottle_param,plot_title,profile_wmo,selected_units,selected_cruise);
+      anomaly_plot = make_anomaly_plot(input_data,selected_float_param,selected_bottle_param,plot_title,profile_wmo,selected_units,selected_cruise);
+      display_table = make_table(input_data,selected_float_param,selected_bottle_param,profile_wmo,selected_cruise,max_dist = 5000,true);
 
-    Plotly.newPlot('profile_plot_content',
-      profile_plot.traces,
-      profile_plot.layout,
-      { displayModeBar: false }
-    );
+      Plotly.newPlot('profile_plot_content',
+        profile_plot.traces,
+        profile_plot.layout,
+        { displayModeBar: false }
+      );
 
-    Plotly.newPlot('anomaly_plot_content',
-      [anomaly_plot.diff_trace],
-      anomaly_plot.layout,
-      { displayModeBar: false }
-    );
+      Plotly.newPlot('anomaly_plot_content',
+        [anomaly_plot.diff_trace],
+        anomaly_plot.layout,
+        { displayModeBar: false }
+      );
+
+      Plotly.newPlot('table_content',
+        display_table.data,
+        display_table.layout,
+        { displayModeBar: false }
+      );
     } else{
-      summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_cruise);
-      display_table = make_table(input_data,selected_float_param,selected_bottle_param,selected_wmo,selected_cruise,max_dist);
+      summary_plot = make_summary_plot(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,map_wmo,selected_cruise);
+      display_table = make_table(input_data,selected_float_param,selected_bottle_param,map_wmo,selected_cruise,max_dist);
 
       Plotly.newPlot('profile_plot_content',
         summary_plot.hist_trace,
@@ -407,7 +420,6 @@ param_content.addEventListener("click",function(event){
         { displayModeBar: false }
       );
     }
-
-  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,selected_wmo,selected_cruise)
+  display_map = make_map(input_data,selected_float_param,selected_bottle_param,plot_title,max_dist,map_wmo,selected_cruise)
   }
 })
