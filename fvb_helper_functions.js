@@ -447,9 +447,12 @@ async function make_map(plot_data,selected_float_param,selected_bottle_param,plo
   dist_data_filt = filter_values(dist_data,map_rows);
   float_filt = filter_values(float_data,map_rows);
   bottle_filt = filter_values(bottle_data,map_rows);
-
-  diff_filt = float_filt.map((value,i)=>clean_subtract(value,bottle_filt[i]))
- 
+  if(selected_bottle_param == ""){
+    diff_filt = float_filt
+  } else {
+      diff_filt = float_filt.map((value,i)=>clean_subtract(value,bottle_filt[i]))
+  }
+  console.log(diff_filt)
   legend_title = plot_title + " ("+selected_units+")";
   diff_data_avg = avg_by_group(wmo_data_filt,diff_filt).output_values;
   wmo_data_unq = avg_by_group(wmo_data_filt,diff_filt).output_groups;
